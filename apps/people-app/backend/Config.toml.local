@@ -9,6 +9,12 @@ RESIGNATION_ROLE = ""
 QR_EXPORT_ROLE = ""
 EXTERNAL_USER_ROLES = [];
 
+# Service-to-service readers of GET /employees/basic-info (gateway client-credentials tokens, no user).
+# Empty = none. Confirm the client-id claim name against a real gateway token.
+[people.authorization.serviceClients]
+clientIdClaim = "azp"
+directoryClientIds = []
+
 [people.database.dbConfig]
 host = ""
 user = ""

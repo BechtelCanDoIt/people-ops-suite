@@ -22,6 +22,19 @@ public type CustomJwtPayload record {
     string[] groups;
 };
 
+# Service-to-service callers allowed to read the employee directory.
+#
+# A service calls through the gateway with OAuth2 client credentials, so its gateway JWT names the calling
+# application but carries no user `email` or `groups`. Such a token is admitted only when its client id is
+# listed here, and only for `GET /employees/basic-info`.
+public type ServiceClientConfig record {|
+    # JWT claim holding the calling application's client id. Check a real gateway token for the claim name
+    # before relying on the default.
+    string clientIdClaim = "azp";
+    # Client ids allowed to read the directory. Empty = no service callers (the behaviour before this change).
+    string[] directoryClientIds = [];
+|};
+
 # Application specific role mapping.
 public type AppRoles record {|
     # Role for the employee

@@ -1,0 +1,12 @@
+[people.authorization.authorizedRoles]
+EMPLOYEE_ROLE = "people-employee"
+ADMIN_ROLE = "people-admin"
+SERVICE_DESK_ROLE = "people-service-desk"
+EMPLOYEE_VIEW_ROLE = "people-employee-view"
+RESIGNATION_ROLE = "people-resignation"
+QR_EXPORT_ROLE = "people-qr-export"
+EXTERNAL_USER_ROLES = ["people-external"]
+
+[people.authorization.serviceClients]
+clientIdClaim = "azp"
+directoryClientIds = ["amplify-api-client"]

@@ -743,14 +743,16 @@ service http:InterceptableService / on new http:Listener(9090) {
     }
 
     # Fetch directory information for all currently employed staff (Active and Marked leaver).
-    # Available to every authenticated user.
+    # Available to every authenticated user, and to the service clients listed in
+    # `authorization.serviceClients.directoryClientIds` (see `authorization:ServiceClientConfig`).
     #
     # + return - Directory information for Active and Marked leaver employees
     resource function get employees/basic\-info(http:RequestContext ctx)
         returns database:EmployeeDirectoryInfo[]|http:InternalServerError {
 
         authorization:CustomJwtPayload|error userInfo = ctx.getWithType(authorization:HEADER_USER_INFO);
-        if userInfo is error {
+        string|error serviceClient = ctx.getWithType(authorization:HEADER_SERVICE_CLIENT);
+        if userInfo is error && serviceClient is error {
             return <http:InternalServerError>{
                 body: {
                     message: ERROR_USER_INFORMATION_HEADER_NOT_FOUND
