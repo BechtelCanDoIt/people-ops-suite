@@ -46,9 +46,9 @@ public isolated service class JwtInterceptor {
             return <http:InternalServerError>{body: {message: errorMsg}};
         }
 
-        // Service callers (no user email in the token) are decided before the user path below, which would
-        // otherwise reject the token as malformed.
-        if result[1]["email"] is () {
+        // Service callers (an application token with no user email or groups) are decided before the user
+        // path below, which would otherwise reject the token as malformed.
+        if result[1]["email"] is () && result[1]["groups"] is () {
             string? clientId = allowedServiceClient(result[1]);
             if clientId is string {
                 if isServiceClientRoute(req.method, path) {
@@ -110,11 +110,15 @@ public isolated service class JwtInterceptor {
     }
 }
 
-# The calling application's client id when the token belongs to an allowed service client.
+# The calling application's client id when the token belongs to an allowed service client: issued to an
+# application (`applicationClaim` = `applicationValue`), and its client id is listed.
 #
 # + payload - Decoded gateway JWT payload
 # + return - Client id, or `()` when the token isn't an allowed service client
 isolated function allowedServiceClient(jwt:Payload payload) returns string? {
+    if payload[serviceClients.applicationClaim] != serviceClients.applicationValue {
+        return ();
+    }
     anydata claim = payload[serviceClients.clientIdClaim];
     if claim !is string || claim.trim() == "" {
         return ();
@@ -128,5 +132,6 @@ isolated function allowedServiceClient(jwt:Payload payload) returns string? {
 # + path - Path segments after the service base path
 # + return - True for the employee directory read
 isolated function isServiceClientRoute(string method, string[] path) returns boolean =>
-    method == http:HTTP_GET && string:'join("/", ...path) == SERVICE_CLIENT_PATH;
+    // Two segments exactly: an encoded slash (`employees%2Fbasic-info`) arrives as one segment and is refused.
+    method == http:HTTP_GET && path.length() == 2 && string:'join("/", ...path) == SERVICE_CLIENT_PATH;
 

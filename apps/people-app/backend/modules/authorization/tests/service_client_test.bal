@@ -64,7 +64,7 @@ function call(string method, string path, map<json> claims) returns http:Respons
 
 @test:Config
 function allowedServiceClientReadsTheDirectory() returns error? {
-    http:Response res = check call("GET", "/employees/basic-info", {azp: "amplify-api-client", sub: "amplify"});
+    http:Response res = check call("GET", "/employees/basic-info", {azp: "amplify-api-client", aut: "APPLICATION", sub: "amplify"});
     test:assertEquals(res.statusCode, 200);
     json body = check res.getJsonPayload();
     test:assertEquals(check body.serviceClient, "amplify-api-client");
@@ -73,7 +73,7 @@ function allowedServiceClientReadsTheDirectory() returns error? {
 
 @test:Config
 function allowedServiceClientIsLimitedToTheDirectory() returns error? {
-    map<json> amplify = {azp: "amplify-api-client"};
+    map<json> amplify = {azp: "amplify-api-client", aut: "APPLICATION"};
     test:assertEquals((check call("GET", "/employees/E1", amplify)).statusCode, 403, "no single employee record");
     test:assertEquals((check call("GET", "/employees/a@wso2.com/vehicles", amplify)).statusCode, 403);
     test:assertEquals((check call("POST", "/employees/basic-info", amplify)).statusCode, 403, "read only");
@@ -82,9 +82,9 @@ function allowedServiceClientIsLimitedToTheDirectory() returns error? {
 @test:Config
 function unknownServiceClientIsRefusedAsBefore() returns error? {
     // Not listed: falls through to the user path, which can't read a user from it (unchanged behaviour).
-    http:Response res = check call("GET", "/employees/basic-info", {azp: "someone-else"});
+    http:Response res = check call("GET", "/employees/basic-info", {azp: "someone-else", aut: "APPLICATION"});
     test:assertEquals(res.statusCode, 500);
-    http:Response blank = check call("GET", "/employees/basic-info", {azp: "  "});
+    http:Response blank = check call("GET", "/employees/basic-info", {azp: "  ", aut: "APPLICATION"});
     test:assertEquals(blank.statusCode, 500);
 }
 
@@ -108,3 +108,26 @@ function userTokenWithAListedClientIdStaysAUser() returns error? {
             {email: "ada@wso2.com", groups: [], azp: "amplify-api-client"});
     test:assertEquals(res.statusCode, 403);
 }
+
+@test:Config
+function emailLessUserThroughAListedAppIsNotAService() returns error? {
+    // A person (or a service account) with no email, signed in through the listed app, carries its azp but
+    // isn't an application token: it never reaches the directory as a service.
+    http:Response appUser = check call("GET", "/employees/basic-info",
+            {azp: "amplify-api-client", aut: "APPLICATION_USER", sub: "someone"});
+    test:assertEquals(appUser.statusCode, 500, "falls through to the user path, which can't read a user");
+    http:Response noMarker = check call("GET", "/employees/basic-info", {azp: "amplify-api-client"});
+    test:assertEquals(noMarker.statusCode, 500);
+    http:Response withGroups = check call("GET", "/employees/basic-info",
+            {azp: "amplify-api-client", aut: "APPLICATION", groups: []});
+    test:assertEquals(withGroups.statusCode, 500, "a token with groups is a user token, never a service");
+}
+
+@test:Config
+function serviceRouteMatchesSegmentsExactly() returns error? {
+    map<json> amplify = {azp: "amplify-api-client", aut: "APPLICATION"};
+    test:assertEquals((check call("GET", "/employees%2Fbasic-info", amplify)).statusCode, 403,
+            "an encoded slash is one segment, not the directory route");
+    test:assertEquals((check call("GET", "/employees/basic-info/extra", amplify)).statusCode, 403);
+}
+

@@ -13,6 +13,8 @@ EXTERNAL_USER_ROLES = [];
 # Empty = none. Confirm the client-id claim name against a real gateway token.
 [people.authorization.serviceClients]
 clientIdClaim = "azp"
+applicationClaim = "aut"
+applicationValue = "APPLICATION"
 directoryClientIds = []
 
 [people.database.dbConfig]
