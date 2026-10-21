@@ -785,6 +785,19 @@ public type UpdateDesignationPayload record {|
     boolean? isActive = ();
 |};
 
+# [Database] The timezone of one of a company's work locations.
+public type LocationTimeZone record {|
+    # Company ID
+    @sql:Column {name: "company_id"}
+    int companyId;
+    # Work location name, as stored on the employee
+    @sql:Column {name: "allowed_location"}
+    string allowedLocation;
+    # IANA timezone name, e.g. "Asia/Colombo"
+    @sql:Column {name: "time_zone"}
+    string timeZone;
+|};
+
 # [Database] Company record with allowed locations as a JSON string.
 public type CompanyRow record {|
     # Company ID

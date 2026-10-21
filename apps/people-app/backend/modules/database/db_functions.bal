@@ -411,6 +411,16 @@ isolated function mapToCompanyResponse(CompanyRow company) returns CompanyRespon
     };
 }
 
+# Get the timezone of every company work location, keyed for localDateAt.
+#
+# + return - Location key to IANA timezone name, or an error
+public isolated function getLocationTimeZones() returns map<string>|error {
+    stream<LocationTimeZone, error?> locationStream = databaseClient->query(getLocationTimeZonesQuery());
+    LocationTimeZone[] locations = check from LocationTimeZone location in locationStream
+        select location;
+    return toLocationTimeZoneMap(locations);
+}
+
 # Get offices.
 #
 # + companyId - Company ID (optional)
