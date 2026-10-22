@@ -544,8 +544,11 @@ isolated function getEmployeesQuery(EmployeeSearchPayload payload, string? leadE
               HAVING COUNT(DISTINCT el_f.leadership_group_id) = ${leadershipGroupList.length()})`));
     }
 
+    // By status rather than by comparing the start date with today: the scheduler moves a New
+    // joiner to Active at midnight where they work, so the status is right for every location,
+    // whereas the database server's own date is right for none in particular.
     if payload.filters.excludeFutureStartDate == true {
-        filters.push(`e.start_date <= CURDATE()`);
+        filters.push(`e.employee_status <> ${EMPLOYEE_NEW_JOINER}`);
     }
 
     string? searchString = payload.searchString;
@@ -1524,6 +1527,15 @@ isolated function getCompaniesQuery() returns sql:ParameterizedQuery =>
     LEFT JOIN companies_allowed_locations cal 
         ON c.id = cal.company_id AND cal.is_active = 1
     GROUP BY c.id, c.name, c.prefix, c.location;`;
+
+# Get the timezone of every company work location.
+#
+# Inactive locations are included: an employee keeps a location after it stops being offered
+# for onboarding, and their dates still need its timezone.
+#
+# + return - Query returning each location's company, name and timezone
+isolated function getLocationTimeZonesQuery() returns sql:ParameterizedQuery =>
+    `SELECT company_id, allowed_location, time_zone FROM companies_allowed_locations`;
 
 # Get offices query.
 #
