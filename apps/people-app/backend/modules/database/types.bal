@@ -142,6 +142,8 @@ public type EmployeeDirectoryInfo record {|
     string? subTeam;
     # Unit
     string? unit;
+    # House
+    string? house;
     # Employment type
     string employmentType;
     # Company name

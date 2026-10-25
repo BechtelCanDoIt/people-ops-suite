@@ -70,6 +70,7 @@ isolated function getAllEmployeesBasicInfoQuery() returns sql:ParameterizedQuery
         t.name AS team,
         st.name AS subTeam,
         u.name AS unit,
+        h.name AS house,
         et.name AS employmentType,
         c.name AS company,
         e.work_location AS workLocation,
@@ -82,6 +83,7 @@ isolated function getAllEmployeesBasicInfoQuery() returns sql:ParameterizedQuery
         INNER JOIN company c ON c.id = e.company_id
         LEFT JOIN sub_team st ON e.sub_team_id = st.id
         LEFT JOIN unit u ON e.unit_id = u.id
+        LEFT JOIN house h ON e.house_id = h.id
     WHERE e.employee_status IN ('Active', 'Marked leaver');`;
 
 # Fetch employee ID by primary key ID.
