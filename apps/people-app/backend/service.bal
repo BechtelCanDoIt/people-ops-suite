@@ -338,6 +338,36 @@ service http:InterceptableService / on new http:Listener(9090) {
         return employeeInfo;
     }
 
+    # Fetch how a member of the caller's team is linked to them.
+    #
+    # + employeeId - Employee ID of the team member
+    # + return - Reporting line, or Forbidden when the employee is not in the caller's chain
+    resource function get employees/[string employeeId]/reporting\-line(http:RequestContext ctx)
+        returns database:ReportingLine|http:InternalServerError|http:Forbidden {
+
+        authorization:CustomJwtPayload|error userInfo = ctx.getWithType(authorization:HEADER_USER_INFO);
+        if userInfo is error {
+            return <http:InternalServerError>{
+                body: {
+                    message: ERROR_USER_INFORMATION_HEADER_NOT_FOUND
+                }
+            };
+        }
+
+        database:ReportingLine|error? reportingLine = database:getReportingLine(userInfo.email, employeeId);
+        if reportingLine is error {
+            string customErr = string `Error occurred while fetching the reporting line for ID: ${employeeId}`;
+            log:printError(customErr, reportingLine, employeeId = employeeId);
+            return <http:InternalServerError>{body: {message: customErr}};
+        }
+        if reportingLine is () {
+            log:printWarn("Employee is not in the caller's team", invokerEmail = userInfo.email,
+                    employeeId = employeeId);
+            return <http:Forbidden>{body: {message: "This employee is not in your team"}};
+        }
+        return reportingLine;
+    }
+
     # Fetch employee personal information.
     #
     # + employeeId - Employee ID

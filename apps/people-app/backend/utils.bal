@@ -1162,7 +1162,9 @@ isolated function toSchedulableColumns(database:UpdateEmployeeJobInfoPayload pay
         if !SCHEDULABLE_FIELD_COLUMNS.hasKey('field) {
             return error(string `${'field} cannot be scheduled for a future date`);
         }
-        columns[SCHEDULABLE_FIELD_COLUMNS.get('field)] = value;
+        // An empty probation end date is a request to clear it; the scheduler sets NULL from a null value.
+        json columnValue = 'field == "probationEndDate" && value == "" ? () : value;
+        columns[SCHEDULABLE_FIELD_COLUMNS.get('field)] = columnValue;
     }
 
     if columns.length() == 0 {

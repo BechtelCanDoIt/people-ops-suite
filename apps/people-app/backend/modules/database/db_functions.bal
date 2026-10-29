@@ -578,6 +578,22 @@ public isolated function isSubordinateOfLead(string leadEmail, string employeeId
     return true;
 }
 
+# How a team member is linked to a lead.
+#
+# + leadEmail - Work email of the lead
+# + employeeId - Employee ID of the team member
+# + return - The reporting line, nil when the member is not in the lead's chain, or an error
+public isolated function getReportingLine(string leadEmail, string employeeId) returns ReportingLine|error? {
+    ReportingLineRow|error row = databaseClient->queryRow(reportingLineQuery(leadEmail, employeeId));
+    if row is sql:NoRowsError {
+        return;
+    }
+    if row is error {
+        return row;
+    }
+    return reportingLineFromRow(row);
+}
+
 # Check if an employee is a lead (manages at least one employee).
 #
 # + leadEmail - Work email of the employee

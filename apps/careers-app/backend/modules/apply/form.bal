@@ -68,11 +68,12 @@ public isolated function parseApplicationForm(http:Request req) returns Applicat
     string email = fields["email"] ?: "";
     string phone = fields["phone"] ?: "";
     string address = fields["address"] ?: "";
+    string university = fields["university"] ?: "";
 
     if firstName == "" || lastName == "" || phone == "" || address == "" {
         return "First name, last name, phone and address are required.";
     }
-    if firstName.length() > 100 || lastName.length() > 100 || address.length() > 300 {
+    if firstName.length() > 100 || lastName.length() > 100 || address.length() > 300 || university.length() > 255 {
         return "One of the details is too long.";
     }
     if !isValidEmail(email) {
@@ -90,5 +91,9 @@ public isolated function parseApplicationForm(http:Request req) returns Applicat
     if !isPdf(cv) {
         return "The CV must be a PDF file.";
     }
-    return {firstName, lastName, email, phone, address, cv};
+    ApplicationForm form = {firstName, lastName, email, phone, address, cv};
+    if university != "" {
+        form.university = university;
+    }
+    return form;
 }

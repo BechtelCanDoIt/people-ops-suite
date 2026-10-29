@@ -17,49 +17,27 @@
 import { BasicUserInfo, DecodedIDTokenPayload } from "@asgardeo/auth-spa";
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-import { State } from "@/types/types";
-
 interface AuthState {
-  status: State;
-  mode: "active" | "maintenance";
-  statusMessage: string | null;
   userInfo: BasicUserInfo | null;
   decodedIdToken: DecodedIDTokenPayload | null;
 }
 
-interface AuthData {
-  userInfo: BasicUserInfo;
-  decodedIdToken: DecodedIDTokenPayload;
-}
-
 const initialState: AuthState = {
-  status: State.idle,
-  mode: "active",
-  statusMessage: null,
   userInfo: null,
   decodedIdToken: null,
 };
 
-export const authSlice = createSlice({
+const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setUserAuthData: (state, action: PayloadAction<AuthData>) => {
+    // Keeps the signed-in user's details.
+    setUserAuthData: (state, action: PayloadAction<AuthState>) => {
       state.userInfo = action.payload.userInfo;
       state.decodedIdToken = action.payload.decodedIdToken;
-      state.status = State.success;
-    },
-    setAuthError: (state) => {
-      state.status = State.failed;
-      state.statusMessage = "Authentication failed. Please try again.";
-      state.userInfo = null;
-      state.decodedIdToken = null;
-    },
-    setAuthSuccess: (state) => {
-      state.status = State.success;
     },
   },
 });
 
-export const { setUserAuthData, setAuthError, setAuthSuccess } = authSlice.actions;
+export const { setUserAuthData } = authSlice.actions;
 export default authSlice.reducer;

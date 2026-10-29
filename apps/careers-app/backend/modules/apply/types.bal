@@ -27,5 +27,6 @@ public type ApplicationForm record {|
     string email;
     string phone;
     string address;
+    string university?;
     byte[] cv;
 |};

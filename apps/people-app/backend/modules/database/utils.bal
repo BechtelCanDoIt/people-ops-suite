@@ -764,3 +764,21 @@ public isolated function localDateAt(map<string> locationTimeZones, int companyI
             defaultTimeZone = DEFAULT_TIME_ZONE);
     return dateIn(DEFAULT_TIME_ZONE, now) ?: time:utcToString(now).substring(0, 10);
 }
+
+# The reporting line a lead sees for a team member.
+#
+# Only an indirect report needs the additional report named. For an additional report the route
+# starts at the member themselves, and the relation already says so.
+#
+# + row - Reporting line as the query returns it
+# + return - The reporting line
+isolated function reportingLineFromRow(ReportingLineRow row) returns ReportingLine {
+    string? employeeId = row.throughEmployeeId;
+    if row.relation != INDIRECT || employeeId is () {
+        return {relation: row.relation, through: ()};
+    }
+    return {
+        relation: INDIRECT,
+        through: {employeeId, firstName: row.throughFirstName ?: "", lastName: row.throughLastName ?: ""}
+    };
+}
