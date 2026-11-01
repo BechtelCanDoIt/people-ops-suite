@@ -46,6 +46,11 @@ export const SnackMessage = {
 export const OFFER_CONFLICT_ERROR = "OfferConflictError";
 export const OFFER_EXPIRED_ERROR = "OfferExpiredError";
 
+// The backend has no route yet for answering an offer or sending rejection feedback, so these keep both actions
+// hidden. Turn each on when its route exists.
+export const OFFER_RESPONSE_ENABLED = false;
+export const APPLICATION_FEEDBACK_ENABLED = false;
+
 export enum ApplicationStatus {
   Applied = "Applied",
   Screening = "Screening",

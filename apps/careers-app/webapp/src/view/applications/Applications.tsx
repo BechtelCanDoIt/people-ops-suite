@@ -29,7 +29,13 @@ import {
 import CenteredSpinner from "@component/common/CenteredSpinner";
 import PageContainer from "@component/common/PageContainer";
 import { CareersSiteUrl } from "@config/config";
-import { ApplicationStatus, OFFER_CONFLICT_ERROR, OFFER_EXPIRED_ERROR, SnackMessage } from "@config/constant";
+import {
+  APPLICATION_FEEDBACK_ENABLED,
+  ApplicationStatus,
+  OFFER_CONFLICT_ERROR,
+  OFFER_EXPIRED_ERROR,
+  SnackMessage,
+} from "@config/constant";
 import { useAppAuthContext } from "@context/AuthContext";
 import {
   type ApplicationExtras,
@@ -74,6 +80,7 @@ const Applications = () => {
   const dismissedFeedbackIds = useAppSelector((state: RootState) => state.careers.dismissedFeedbackIds);
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const feedbackDue =
+    APPLICATION_FEEDBACK_ENABLED &&
     selectedApplication?.status === ApplicationStatus.Rejected &&
     !selectedApplication.feedbackSubmitted &&
     !dismissedFeedbackIds.includes(selectedApplication.id);

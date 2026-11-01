@@ -20,7 +20,7 @@ import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
 import Callout from "@component/common/Callout";
-import { ApplicationStatus } from "@config/constant";
+import { ApplicationStatus, OFFER_RESPONSE_ENABLED } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
   STAGES,
@@ -133,7 +133,7 @@ const ApplicationDetails = ({
           </Callout>
         )}
 
-        {isOffer(application) && !offerExpired && (
+        {OFFER_RESPONSE_ENABLED && isOffer(application) && !offerExpired && (
           <OfferActions canAccept={canAcceptOffer} onAccept={onAcceptOffer} onDecline={onDeclineOffer} />
         )}
 
