@@ -87,7 +87,16 @@ const ApplicationDetails = ({
         <Typography
           fontSize="0.95rem"
           fontWeight={actionNeeded || interviewComing ? 700 : 500}
-          sx={{ mt: 1.5, color: actionNeeded || interviewComing ? "primary.main" : "text.secondary" }}
+          sx={{
+            mt: 1.5,
+            // The darker orange on the light theme, which is the one with enough contrast against white.
+            color: (theme) =>
+              actionNeeded || interviewComing
+                ? theme.palette.mode === "dark"
+                  ? theme.palette.primary.main
+                  : theme.palette.primary.dark
+                : theme.palette.text.secondary,
+          }}
         >
           {nextStepOf(application, interviews)}
         </Typography>
