@@ -76,7 +76,7 @@ interface CareersState {
   profileState: State;
   applications: Application[];
   applicationsState: State;
-  // The interviews, offer letter and documents status of each opened application, by application id, kept so a page
+  // The interviews and documents status of each opened application, by application id, kept so a page
   // that is opened again shows them at once.
   applicationExtras: Record<string, ApplicationExtras>;
   // Applications whose feedback request the candidate dismissed.

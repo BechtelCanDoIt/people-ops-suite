@@ -63,7 +63,6 @@ const AppHandler = () => {
           errorElement: <NotFoundPage />,
           children: [
             { path: "/", element: <View.landing /> },
-            { path: "/jobs", element: <CareersSiteRedirect /> },
             { path: "/jobs/*", element: <CareersSiteRedirect /> },
             {
               element: <RequireSignIn />,

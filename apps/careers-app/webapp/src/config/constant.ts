@@ -25,7 +25,6 @@ export const SnackMessage = {
   error: {
     fetchApplications: "Unable to retrieve your applications.",
     fetchProfile: "Unable to retrieve your profile.",
-    submitApplication: "Failed to submit application. Please try again.",
     saveProfile: "Unable to save your changes. Please try again.",
     respondToOffer: "Unable to record your response to the offer. Please try again.",
     sendFeedback: "Unable to send your feedback. Please try again.",
