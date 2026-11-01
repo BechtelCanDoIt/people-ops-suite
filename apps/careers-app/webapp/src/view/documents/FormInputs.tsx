@@ -16,9 +16,9 @@
 
 import { Box, Button, MenuItem, Stack, TextField, Typography } from "@wso2/oxygen-ui";
 import { ChevronDown, ChevronUp, CircleAlert, CircleCheck, Clock, Trash2 } from "@wso2/oxygen-ui-icons-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { COUNTRY_OPTIONS, splitE164, toE164 } from "@utils/phone";
+import { COUNTRY_OPTIONS, phoneFrom, splitE164 } from "@utils/phone";
 import { fullRowSx } from "@utils/styles";
 import type { DocumentStatus } from "@view/documents/documentFiles";
 
@@ -174,12 +174,6 @@ export const SelectInput = ({
   </Field>
 );
 
-// The number in the format the backend accepts, or an empty text until both parts are filled in.
-const phoneOf = (countryIso: string, national: string) => {
-  const dialCode = COUNTRY_OPTIONS.find((option) => option.iso === countryIso)?.dialCode ?? "";
-  return dialCode && national ? toE164(dialCode, national) : "";
-};
-
 // A country code to choose and the digits of the number. It starts from the number it is given and is remade by its
 // key when a different number is loaded.
 export const PhoneInput = ({
@@ -199,8 +193,15 @@ export const PhoneInput = ({
   const change = (nextIso: string, nextNational: string) => {
     setCountryIso(nextIso);
     setNational(nextNational);
-    onChange(phoneOf(nextIso, nextNational));
+    onChange(phoneFrom(nextIso, nextNational));
   };
+  // A default country that arrives once the input is on the page (the profile loads while the form is open) is taken
+  // only while none has been chosen, so a choice is never replaced and the digits typed so far are kept.
+  useEffect(() => {
+    if (countryIso || !defaultCountry) return;
+    setCountryIso(defaultCountry);
+    if (national) onChange(phoneFrom(defaultCountry, national));
+  }, [countryIso, defaultCountry, national, onChange]);
   return (
     <Field span={span} error={error} helper={helper}>
       <Box sx={{ display: "grid", gridTemplateColumns: "minmax(96px, 112px) 1fr", gap: 1 }}>
