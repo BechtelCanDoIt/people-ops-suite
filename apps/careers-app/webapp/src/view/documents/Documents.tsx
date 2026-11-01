@@ -83,13 +83,6 @@ const Documents = () => {
   // Raised to ask for the earlier submission again after it failed to load.
   const [statusAttempt, setStatusAttempt] = useState(0);
 
-  // Set once the candidate types in the form, so what arrives later never replaces it.
-  const typedRef = useRef(false);
-  const changeDetails = (next: PersonalDetails) => {
-    typedRef.current = true;
-    setDetails(next);
-  };
-
   // Fills the form from the candidate's profile once it has loaded. Only fields that are still empty are filled, so
   // what was typed meanwhile stays.
   useEffect(() => {
@@ -129,7 +122,7 @@ const Documents = () => {
       .then((loaded) => {
         if (cancelled) return;
         setStatus(loaded);
-        if (loaded.details && savedDetailsFor.current !== applicationId && !typedRef.current) {
+        if (loaded.details && savedDetailsFor.current !== applicationId) {
           savedDetailsFor.current = applicationId;
           // Details an older submission lacks are filled in as empty.
           setDetails({ ...emptyDetails(), ...loaded.details });
@@ -155,11 +148,14 @@ const Documents = () => {
   const closed = Boolean(status?.submitted && !status.canEdit);
 
   // Whether the page is still waiting for what the form is built from: the applications and, for an accepted offer, the
-  // list of documents. The profile and the earlier submission load while the form is open.
+  // list of documents and the earlier submission. The form is not shown before the earlier submission is known: it
+  // decides between a first submission, a change to it and neither, and holds the details a change starts from, so
+  // nothing typed before it arrives could be lost or saved over it. Only the profile loads while the form is open.
   const stillLoading =
     applicationsState === State.idle ||
     applicationsState === State.loading ||
-    (eligible && (requirementsState === State.idle || requirementsState === State.loading));
+    (eligible &&
+      (requirementsState === State.idle || requirementsState === State.loading || status === undefined));
 
   // The personal email comes only from the profile and cannot be changed here.
   const profileReady = profileState === State.success;
@@ -376,7 +372,7 @@ const Documents = () => {
             <PersonalDetailsForm
               key={detailsVersion}
               details={details}
-              onChange={changeDetails}
+              onChange={setDetails}
               applicationReady={prefilled}
               errors={showDetailErrors ? currentDetailErrors : {}}
               options={requirements}
