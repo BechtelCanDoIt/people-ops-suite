@@ -14,13 +14,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Box, Button, LinearProgress, Typography } from "@wso2/oxygen-ui";
+import { Box, Button, Typography } from "@wso2/oxygen-ui";
 import { Navigate, useSearchParams } from "react-router-dom";
 
 import { useEffect, useState } from "react";
 
+import PreLoader from "@component/common/PreLoader";
 import { useAppAuthContext } from "@context/AuthContext";
-import { isValidEmail } from "@utils/email";
+import { emailFromLink, isValidEmail } from "@utils/email";
 import { clearForcedSignOut, forcedSignOutRecently, hasSignInError } from "@utils/profileService";
 import { pillButtonSx } from "@utils/styles";
 
@@ -29,7 +30,7 @@ import { pillButtonSx } from "@utils/styles";
 const Landing = () => {
   const { isSignedIn, appSignIn } = useAppAuthContext();
   const [params] = useSearchParams();
-  const emailParam = params.get("email")?.trim() ?? "";
+  const emailParam = emailFromLink(params.get("email"));
   const email = isValidEmail(emailParam) ? emailParam : undefined;
 
   // Set when the app just signed the candidate out because the backend refused their session. A sign-in started again
@@ -80,23 +81,8 @@ const Landing = () => {
     );
   }
 
-  return (
-    <Box
-      sx={{
-        minHeight: "60vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 2,
-      }}
-    >
-      <LinearProgress color="primary" sx={{ width: { xs: "70%", sm: 530 }, borderRadius: 1 }} />
-      <Typography variant="body2" color="text.secondary">
-        Authenticating...
-      </Typography>
-    </Box>
-  );
+  // The same screen RequireSignIn shows while it waits for the sign-in, so going from one to the other does not flicker.
+  return <PreLoader isLoading message="Authenticating..." />;
 };
 
 export default Landing;
