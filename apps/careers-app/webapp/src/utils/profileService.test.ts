@@ -22,6 +22,7 @@ import {
   clearForcedSignOut,
   fetchApplications,
   forcedSignOutRecently,
+  hasSignInError,
   noteForcedSignOut,
   setTokenRenewer,
 } from "@utils/profileService";
@@ -158,5 +159,18 @@ describe("the note of a forced sign-out", () => {
       },
     });
     expect(forcedSignOutRecently()).toBe(false);
+  });
+});
+
+describe("an error from the identity provider on the address", () => {
+  it("is found whatever else the address carries", () => {
+    expect(hasSignInError("?error=access_denied")).toBe(true);
+    expect(hasSignInError("?email=a%40b.c&error=login_required&state=x")).toBe(true);
+  });
+
+  it("is not there on a normal address or a normal sign-in return", () => {
+    expect(hasSignInError("")).toBe(false);
+    expect(hasSignInError("?email=a%40b.c")).toBe(false);
+    expect(hasSignInError("?code=abc&state=xyz")).toBe(false);
   });
 });

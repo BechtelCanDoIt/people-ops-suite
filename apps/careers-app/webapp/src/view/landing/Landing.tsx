@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 
 import { useAppAuthContext } from "@context/AuthContext";
 import { isValidEmail } from "@utils/email";
-import { clearForcedSignOut, forcedSignOutRecently } from "@utils/profileService";
+import { clearForcedSignOut, forcedSignOutRecently, hasSignInError } from "@utils/profileService";
 import { pillButtonSx } from "@utils/styles";
 
 // The entry of the link in the email sent after applying: it opens the Asgardeo sign-in right away, where the
@@ -36,13 +36,17 @@ const Landing = () => {
   // at once would end the same way, so the candidate is asked instead.
   const [stopped, setStopped] = useState(() => forcedSignOutRecently());
 
+  // Set when Asgardeo sent the candidate back here with an error. The same sign-in would come back with the same
+  // error, so it is not started again until the candidate asks.
+  const signInRefused = hasSignInError(params.toString());
+
   useEffect(() => {
-    if (!isSignedIn && !stopped) appSignIn(email);
-  }, [isSignedIn, stopped, appSignIn, email]);
+    if (!isSignedIn && !stopped && !signInRefused) appSignIn(email);
+  }, [isSignedIn, stopped, signInRefused, appSignIn, email]);
 
   if (isSignedIn) return <Navigate to="/applications" replace />;
 
-  if (stopped) {
+  if (stopped || signInRefused) {
     return (
       <Box
         sx={{
@@ -57,13 +61,16 @@ const Landing = () => {
         }}
       >
         <Typography color="text.primary">
-          We could not verify your session with the server. Please try again in a moment.
+          {stopped
+            ? "We could not verify your session with the server. Please try again in a moment."
+            : "We could not sign you in. Please try again, or contact the recruitment team if it keeps happening."}
         </Typography>
         <Button
           variant="contained"
           onClick={() => {
             clearForcedSignOut();
             setStopped(false);
+            if (signInRefused) appSignIn(email);
           }}
           sx={{ ...pillButtonSx, px: 3 }}
         >

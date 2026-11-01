@@ -125,6 +125,10 @@ export const clearForcedSignOut = () => {
   }
 };
 
+// Whether the address carries an error from the identity provider (access denied, a locked account and so on). A
+// sign-in started again at once would be refused the same way, so the candidate is asked first.
+export const hasSignInError = (search: string): boolean => new URLSearchParams(search).has("error");
+
 // The signed-in candidate's own profile.
 export async function fetchProfile(accessToken: string): Promise<CandidateProfile> {
   return sendRenewing(accessToken, (token) =>

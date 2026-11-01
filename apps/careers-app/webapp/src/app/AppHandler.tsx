@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Navigate, Outlet, RouterProvider, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from "react-router-dom";
 
 import { useEffect, useMemo } from "react";
 
@@ -23,16 +23,24 @@ import NotFoundPage from "@component/common/NotFoundPage";
 import PreLoader from "@component/common/PreLoader";
 import { CareersSiteUrl } from "@config/config";
 import { useAppAuthContext } from "@context/AuthContext";
+import { hasSignInError } from "@utils/profileService";
 import type { RouteHandle } from "@utils/routeData";
 import { View } from "@view/index";
 
 // Shows the pages inside it to signed-in candidates, and sends a guest to sign in.
 const RequireSignIn = () => {
   const { isSignedIn, appSignIn } = useAppAuthContext();
+  const { search } = useLocation();
+
+  // An error from Asgardeo on the address is not answered with another sign-in, which would loop. The landing page
+  // shows it and asks the candidate.
+  const signInRefused = hasSignInError(search);
 
   useEffect(() => {
-    if (!isSignedIn) appSignIn();
-  }, [isSignedIn, appSignIn]);
+    if (!isSignedIn && !signInRefused) appSignIn();
+  }, [isSignedIn, signInRefused, appSignIn]);
+
+  if (!isSignedIn && signInRefused) return <Navigate to={{ pathname: "/", search }} replace />;
 
   return isSignedIn ? <Outlet /> : <PreLoader isLoading message="Authenticating..." />;
 };
