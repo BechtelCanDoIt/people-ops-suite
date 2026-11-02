@@ -1,4 +1,4 @@
-// Copyright (c) 2025 WSO2 LLC. (https://www.wso2.com).
+// Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).
 //
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -45,6 +45,9 @@ service http:InterceptableService / on new http:Listener(TEST_PORT) {
 final http:Client testClient = check new (string `http://localhost:${TEST_PORT}`);
 
 # An unsigned JWT: the interceptor only decodes (the gateway verifies), so the signature is never read.
+#
+# + claims - JWT payload claims
+# + return - Compact JWT string
 function token(map<json> claims) returns string {
     string header = {alg: "RS256", typ: "JWT"}.toJsonString().toBytes().toBase64();
     string payload = claims.toJsonString().toBytes().toBase64();
@@ -81,11 +84,11 @@ function allowedServiceClientIsLimitedToTheDirectory() returns error? {
 
 @test:Config
 function unknownServiceClientIsRefusedAsBefore() returns error? {
-    // Not listed: falls through to the user path, which can't read a user from it (unchanged behaviour).
+    // An application token whose client isn't listed is refused as 403, not treated as a malformed user token.
     http:Response res = check call("GET", "/employees/basic-info", {azp: "someone-else", aut: "APPLICATION"});
-    test:assertEquals(res.statusCode, 500);
+    test:assertEquals(res.statusCode, 403);
     http:Response blank = check call("GET", "/employees/basic-info", {azp: "  ", aut: "APPLICATION"});
-    test:assertEquals(blank.statusCode, 500);
+    test:assertEquals(blank.statusCode, 403);
 }
 
 @test:Config
@@ -104,9 +107,9 @@ function userTokensAreUnchanged() returns error? {
 @test:Config
 function userTokenWithAListedClientIdStaysAUser() returns error? {
     // A user signed in through an app whose id happens to be listed still goes through the role check.
-    http:Response res = check call("GET", "/employees/E1",
-            {email: "ada@wso2.com", groups: [], azp: "amplify-api-client"});
-    test:assertEquals(res.statusCode, 403);
+    http:Response res = check call("GET", "/employees/basic-info",
+            {email: "ada@wso2.com", groups: [], azp: "amplify-api-client", aut: "APPLICATION"});
+    test:assertEquals(res.statusCode, 403, "a user token is never admitted as a service client");
 }
 
 @test:Config

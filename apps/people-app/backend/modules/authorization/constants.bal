@@ -20,10 +20,6 @@ public const HEADER_USER_INFO = "user-info";
 # Request-context key holding the client id of an allowed service caller (see `ServiceClientConfig`).
 public const HEADER_SERVICE_CLIENT = "service-client";
 
-# The one resource a service caller may reach: the employee directory (read-only, the same data every
-# authenticated employee can read).
-public const SERVICE_CLIENT_PATH = "employees/basic-info";
-
 # Privileges.
 public const ADMIN_PRIVILEGE = 999;
 public const EMPLOYEE_PRIVILEGE = 987;

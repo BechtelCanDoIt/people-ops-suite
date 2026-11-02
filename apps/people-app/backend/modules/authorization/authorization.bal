@@ -48,17 +48,16 @@ public isolated service class JwtInterceptor {
 
         // Service callers (an application token with no user email or groups) are decided before the user
         // path below, which would otherwise reject the token as malformed.
-        if result[1]["email"] is () && result[1]["groups"] is () {
-            string? clientId = allowedServiceClient(result[1]);
-            if clientId is string {
-                if isServiceClientRoute(req.method, path) {
-                    ctx.set(HEADER_SERVICE_CLIENT, clientId);
-                    return ctx.next();
-                }
-                log:printWarn(string `Service client ${clientId} attempted to access a restricted resource: `
-                        + string `${req.method} ${path.toBalString()}`);
+        if isApplicationToken(result[1]) {
+            string clientId = clientIdOf(result[1]);
+            string route = string `${req.method} ${path.toBalString()}`;
+            if !isServiceClientRoute(clientId, req.method, path) {
+                log:printWarn(string `Service client ${clientId == "" ? "(no client id)" : clientId} was refused: ${route}`);
                 return <http:Forbidden>{body: {message: "Insufficient privileges!"}};
             }
+            log:printInfo(string `Service client ${clientId} accessed: ${route}`);
+            ctx.set(HEADER_SERVICE_CLIENT, clientId);
+            return ctx.next();
         }
 
         CustomJwtPayload|error userInfo = result[1].cloneWithType(CustomJwtPayload);
@@ -110,28 +109,59 @@ public isolated service class JwtInterceptor {
     }
 }
 
-# The calling application's client id when the token belongs to an allowed service client: issued to an
-# application (`applicationClaim` = `applicationValue`), and its client id is listed.
+# Whether the token was issued to an application rather than a person: no user `email` or `groups`, and
+# `applicationClaim` equals `applicationValue`.
 #
 # + payload - Decoded gateway JWT payload
-# + return - Client id, or `()` when the token isn't an allowed service client
-isolated function allowedServiceClient(jwt:Payload payload) returns string? {
-    if payload[serviceClients.applicationClaim] != serviceClients.applicationValue {
-        return ();
-    }
+# + return - True for an application (client-credentials) token
+isolated function isApplicationToken(jwt:Payload payload) returns boolean =>
+    payload["email"] is () && payload["groups"] is () &&
+    payload[serviceClients.applicationClaim] == serviceClients.applicationValue;
+
+# The calling application's client id.
+#
+# + payload - Decoded gateway JWT payload
+# + return - Client id, or an empty string when the token doesn't carry one
+isolated function clientIdOf(jwt:Payload payload) returns string {
     anydata claim = payload[serviceClients.clientIdClaim];
-    if claim !is string || claim.trim() == "" {
-        return ();
-    }
-    return serviceClients.directoryClientIds.indexOf(claim) is () ? () : claim;
+    return claim is string ? claim.trim() : "";
 }
 
-# Whether a request is the one a service client may make: `GET /employees/basic-info`.
+# Whether a listed service client may make a request. Each entry of `clientRoutes` is `<METHOD> <path>`,
+# compared segment by segment.
 #
+# + clientId - Calling application's client id
 # + method - HTTP method
 # + path - Path segments after the service base path
-# + return - True for the employee directory read
-isolated function isServiceClientRoute(string method, string[] path) returns boolean =>
-    // Two segments exactly: an encoded slash (`employees%2Fbasic-info`) arrives as one segment and is refused.
-    method == http:HTTP_GET && path.length() == 2 && string:'join("/", ...path) == SERVICE_CLIENT_PATH;
+# + return - True when the client is listed with this route
+isolated function isServiceClientRoute(string clientId, string method, string[] path) returns boolean {
+    string[]? routes = serviceClients.clientRoutes[clientId];
+    if routes is () {
+        return false;
+    }
+    foreach string route in routes {
+        // An encoded slash (`employees%2Fbasic-info`) arrives as one segment, so it never equals two.
+        string[] parts = re ` `.split(route.trim());
+        if parts.length() == 2 && parts[0] == method && isSamePath(re `/`.split(parts[1]), path) {
+            return true;
+        }
+    }
+    return false;
+}
 
+# Segment-by-segment path comparison.
+#
+# + expected - Segments of the allowed route
+# + actual - Segments of the request path
+# + return - True when both have the same segments in the same order
+isolated function isSamePath(string[] expected, string[] actual) returns boolean {
+    if expected.length() != actual.length() {
+        return false;
+    }
+    foreach int i in 0 ..< expected.length() {
+        if expected[i] != actual[i] {
+            return false;
+        }
+    }
+    return true;
+}
