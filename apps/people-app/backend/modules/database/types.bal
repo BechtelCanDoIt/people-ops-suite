@@ -154,6 +154,30 @@ public type EmployeeDirectoryInfo record {|
     string employeeStatus;
 |};
 
+# Directory entry returned to service clients. Only what they need to place a person: no job band, start date,
+# manager, employment type or status. A field added to `EmployeeDirectoryInfo` never reaches a service client
+# unless it is added here too.
+public type ServiceDirectoryInfo record {|
+    # Employee ID
+    string employeeId;
+    # First name
+    string firstName;
+    # Last name
+    string lastName;
+    # Work email
+    string workEmail;
+    # Thumbnail URL
+    string? employeeThumbnail;
+    # Business unit
+    string businessUnit;
+    # Team
+    string team;
+    # Sub-team
+    string? subTeam;
+    # House
+    string? house;
+|};
+
 # User information with privileges.
 public type UserInfo record {|
     *EmployeeBasicInfo;

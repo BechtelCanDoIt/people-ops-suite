@@ -9,13 +9,15 @@ RESIGNATION_ROLE = ""
 QR_EXPORT_ROLE = ""
 EXTERNAL_USER_ROLES = [];
 
-# Service-to-service readers of GET /employees/basic-info (gateway client-credentials tokens, no user).
+# Service-to-service callers (gateway client-credentials tokens, no user): client id -> routes it may call.
 # Empty = none. Confirm the client-id claim name against a real gateway token.
 [people.authorization.serviceClients]
 clientIdClaim = "azp"
 applicationClaim = "aut"
 applicationValue = "APPLICATION"
-directoryClientIds = []
+
+# One entry per client id, e.g. amplify-api-client = ["GET employees/basic-info"]
+[people.authorization.serviceClients.clientRoutes]
 
 [people.database.dbConfig]
 host = ""
