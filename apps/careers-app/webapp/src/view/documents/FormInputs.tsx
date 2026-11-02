@@ -18,7 +18,7 @@ import { Box, Button, MenuItem, Stack, TextField, Typography } from "@wso2/oxyge
 import { ChevronDown, ChevronUp, CircleAlert, CircleCheck, Clock, Trash2 } from "@wso2/oxygen-ui-icons-react";
 import { useEffect, useState } from "react";
 
-import { COUNTRY_OPTIONS, phoneFrom, splitE164 } from "@utils/phone";
+import { COUNTRY_OPTIONS, phoneFrom, phoneInputStart } from "@utils/phone";
 import { fullRowSx } from "@utils/styles";
 import type { DocumentStatus } from "@view/documents/documentFiles";
 
@@ -187,9 +187,9 @@ export const PhoneInput = ({
   disabled,
   defaultCountry,
 }: InputProps & { defaultCountry: string }) => {
-  const initial = splitE164(value);
-  const [countryIso, setCountryIso] = useState(initial?.countryIso ?? defaultCountry);
-  const [national, setNational] = useState(initial?.national ?? "");
+  const initial = phoneInputStart(value, defaultCountry);
+  const [countryIso, setCountryIso] = useState(initial.countryIso);
+  const [national, setNational] = useState(initial.national);
   const change = (nextIso: string, nextNational: string) => {
     setCountryIso(nextIso);
     setNational(nextNational);

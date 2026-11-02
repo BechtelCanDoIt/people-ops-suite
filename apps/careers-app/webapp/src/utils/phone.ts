@@ -44,5 +44,13 @@ export const splitE164 = (value: string): { countryIso: string; national: string
   return countryIso ? { countryIso, national: parsed.nationalNumber } : null;
 };
 
+// What a phone input shows for a stored value: the country and digits of a number in that format, or, for digits kept
+// without a country (see phoneFrom), the digits with no country so the default can be taken, or nothing.
+export const phoneInputStart = (value: string, defaultCountry: string): { countryIso: string; national: string } => {
+  const split = splitE164(value);
+  if (split) return split;
+  return /^\d+$/.test(value) ? { countryIso: "", national: value } : { countryIso: defaultCountry, national: "" };
+};
+
 // Whether a value is in that format: "+", then 2 to 15 digits, not starting with 0.
 export const isValidE164 = (value: string): boolean => /^\+[1-9]\d{1,14}$/.test(value);
