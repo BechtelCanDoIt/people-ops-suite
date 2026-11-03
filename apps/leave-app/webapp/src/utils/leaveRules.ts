@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { LeaveType, Status } from "@/types/types";
+import { EmployeeLocation, LeaveLabel, LeaveType, Status } from "@/types/types";
 
 const MB = 1024 * 1024;
 const CANCEL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -22,9 +22,9 @@ export const REJECTION_REASON_MAX = 500;
 const SICK_NOTE_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
 
 const LEAVE_LABELS: Record<string, string> = {
-  [LeaveType.CONGES_PAYES]: "Congés Payés",
-  [LeaveType.COMPASSIONATE]: "Compassionate Leave",
-  [LeaveType.OTHER_AUTHORIZED]: "Other Authorized Leave",
+  [LeaveType.CONGES_PAYES]: LeaveLabel.CONGES_PAYES,
+  [LeaveType.COMPASSIONATE]: LeaveLabel.COMPASSIONATE,
+  [LeaveType.OTHER_AUTHORIZED]: LeaveLabel.OTHER_AUTHORIZED,
 };
 
 /** Statuses shown in My History. */
@@ -88,7 +88,7 @@ export function needsReason(leaveType: LeaveType): boolean {
 
 /** Sick leave taken in France needs a sick note. */
 export function needsSickNote(location: string | null, leaveType: LeaveType): boolean {
-  return location === "France" && leaveType === LeaveType.SICK;
+  return location === EmployeeLocation.FR && leaveType === LeaveType.SICK;
 }
 
 /**

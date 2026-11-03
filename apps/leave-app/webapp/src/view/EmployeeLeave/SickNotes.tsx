@@ -33,7 +33,7 @@ import {
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
-import axios from "axios";
+import axios, { HttpStatusCode } from "axios";
 import { useEffect, useMemo, useState } from "react";
 
 import Title from "@root/src/component/common/Title";
@@ -49,7 +49,7 @@ const LOAD_ERROR = "Sick notes could not be loaded.";
 
 const loadErrorMessage = (err: unknown): string => {
   if (axios.isAxiosError(err)) {
-    if (err.response?.status === 403) return "You do not have permission to view sick notes.";
+    if (err.response?.status === HttpStatusCode.Forbidden) return "You do not have permission to view sick notes.";
     const message = (err.response?.data as { message?: unknown } | undefined)?.message;
     if (typeof message === "string" && message) return message;
   }
