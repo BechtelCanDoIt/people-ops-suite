@@ -274,6 +274,7 @@ function offeredEntry(string offerStatus, int daysLeft) returns AtsHistoryEntry 
     entry.offerStatus = offerStatus;
     entry.offerExpiryDate = "2026-11-12";
     entry.offerDaysLeft = daysLeft;
+    entry.offerEmailSubject = "Offer letter";
     return entry;
 }
 
@@ -282,10 +283,12 @@ function theOfferDeadlineIsShownOnlyWhileItMatters() {
     ApplicationSummary open = applicationOf(offeredEntry("OFFER_SENT", 3));
     test:assertEquals(open?.offerExpiresOn, "2026-11-12");
     test:assertEquals(open?.offerDaysLeft, 3);
+    test:assertEquals(open?.offerEmailSubject, "Offer letter");
 
     ApplicationSummary expired = applicationOf(offeredEntry("EXPIRED", 0));
     test:assertEquals(expired?.offerExpiresOn, "2026-11-12");
     test:assertEquals(expired?.offerDaysLeft, ());
+    test:assertEquals(expired?.offerEmailSubject, ());
 
     ApplicationSummary accepted = applicationOf(offeredEntry("ACCEPTED", 3));
     test:assertEquals(accepted?.offerExpiresOn, ());

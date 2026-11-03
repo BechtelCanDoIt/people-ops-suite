@@ -79,6 +79,8 @@ type AtsHistoryEntry record {
     string? offerExpiryDate = ();
     # Whole days left to answer that offer, 0 on its last day.
     int? offerDaysLeft = ();
+    # Subject of the email the offer was sent with.
+    string? offerEmailSubject = ();
 };
 
 type AtsHistoryResponse record {
@@ -168,6 +170,8 @@ public type ApplicationSummary record {|
     string offerExpiresOn?;
     # Whole days left to answer the offer, 0 on its last day. Set only while the offer is open.
     int offerDaysLeft?;
+    # The subject of the offer email, so the candidate can find it. Set only while the offer is open.
+    string offerEmailSubject?;
 |};
 
 # A candidate's answer to an offer.

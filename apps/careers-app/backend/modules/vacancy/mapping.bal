@@ -125,6 +125,10 @@ isolated function applicationOf(AtsHistoryEntry entry) returns ApplicationSummar
     if daysLeft is int && entry.offerStatus == OFFER_STATUS_OFFER_SENT {
         summary.offerDaysLeft = daysLeft;
     }
+    string? emailSubject = entry.offerEmailSubject;
+    if emailSubject is string && entry.offerStatus == OFFER_STATUS_OFFER_SENT {
+        summary.offerEmailSubject = emailSubject;
+    }
     return summary;
 }
 
