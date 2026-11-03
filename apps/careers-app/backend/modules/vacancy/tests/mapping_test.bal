@@ -300,7 +300,9 @@ function anOfferAnswerIsChecked() {
     test:assertEquals(offerDecisionProblem({decision: "ACCEPTED"}), ());
     test:assertEquals(offerDecisionProblem({decision: "MAYBE"}), "The decision must be ACCEPTED or DECLINED.");
     test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Compensation"}), ());
-    test:assertEquals(offerDecisionProblem({decision: "DECLINED"}), "Choose one of the listed reasons for declining.");
-    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Bored"}),
-        "Choose one of the listed reasons for declining.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED"}), "Choose a reason for declining.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "   "}), "Choose a reason for declining.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Other"}), ());
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "x".padEnd(256, "x")}),
+        "The reason is too long.");
 }

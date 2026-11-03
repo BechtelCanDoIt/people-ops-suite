@@ -106,9 +106,6 @@ service http:InterceptableService / on new http:Listener(9090, requestLimits = {
             "Failed to fetch the interviews", requestId);
     }
 
-    # The reasons a candidate can choose from when declining an offer.
-    resource function get offers/decline\-reasons() returns json => {reasons: vacancy:OFFER_DECLINE_REASONS};
-
     # The signed-in candidate accepts or declines the offer of one of their own applications. The ATS records the answer
     # and tells the offers team and HR.
     resource function post applications/[string applicationId]/offer/decision(http:RequestContext ctx,

@@ -30,16 +30,8 @@ const OFFER_STATUS_ACCEPTED = "ACCEPTED";
 const OFFER_STATUS_DECLINED = "DECLINED";
 const OFFER_STATUS_EXPIRED = "EXPIRED";
 
+const MAX_DECLINE_REASON_LENGTH = 255;
 const MAX_DECLINE_FEEDBACK_LENGTH = 1000;
-
-# The reasons a candidate can pick for declining an offer.
-public const string[] OFFER_DECLINE_REASONS = [
-    "Accepted another offer",
-    "Compensation",
-    "Location or relocation",
-    "Personal reasons",
-    "Other"
-];
 
 const MAX_NAME_LENGTH = 100;
 const MAX_ADDRESS_LENGTH = 300;
@@ -178,7 +170,7 @@ public type ApplicationSummary record {|
 public type OfferDecision record {|
     # ACCEPTED or DECLINED
     string decision;
-    # One of OFFER_DECLINE_REASONS, required for a decline
+    # The reason for declining, required for a decline
     string declineReason?;
     # Optional feedback for a decline
     string declineReasonAdditional?;

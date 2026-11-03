@@ -149,12 +149,11 @@ isolated function offerDecisionProblem(OfferDecision answer) returns string? {
         return ();
     }
     string reason = (answer.declineReason ?: "").trim();
-    boolean listed = false;
-    foreach string allowed in OFFER_DECLINE_REASONS {
-        listed = listed || allowed == reason;
+    if reason == "" {
+        return "Choose a reason for declining.";
     }
-    if !listed {
-        return "Choose one of the listed reasons for declining.";
+    if reason.length() > MAX_DECLINE_REASON_LENGTH {
+        return "The reason is too long.";
     }
     if (answer.declineReasonAdditional ?: "").trim().length() > MAX_DECLINE_FEEDBACK_LENGTH {
         return "The feedback is too long.";
