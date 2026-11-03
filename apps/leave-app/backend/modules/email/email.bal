@@ -336,7 +336,7 @@ public isolated function approvalRequestContent(string employeeName, string star
             <p>
                 Hi,
                 <br/><br/>
-                ${employeeName} has requested Other Authorized Leave ${period} (${workingDays}).
+                ${escapeHtml(employeeName)} has requested Other Authorized Leave ${period} (${workingDays}).
                 The request is waiting for the reporting lead's approval.${commentLine}
                 <br/><br/>
                 The reporting lead can approve or reject the request in the Leave App:
@@ -363,7 +363,8 @@ public isolated function rejectionContent(string employeeName, string startDate,
             <p>
                 Hi,
                 <br/><br/>
-                The Other Authorized Leave request of ${employeeName} ${period} has been rejected by the reporting lead.
+                The Other Authorized Leave request of ${escapeHtml(employeeName)} ${period} has been rejected
+                by the reporting lead.
                 <br/><br/>
                 Reason: ${escapeHtml(reason)}
             </p>
@@ -388,7 +389,8 @@ public isolated function withdrawalContent(string employeeName, string startDate
             <p>
                 Hi,
                 <br/><br/>
-                The Other Authorized Leave request of ${employeeName} ${period} has been withdrawn. No action is needed.
+                The Other Authorized Leave request of ${escapeHtml(employeeName)} ${period} has been withdrawn.
+                No action is needed.
             </p>
         `
     };

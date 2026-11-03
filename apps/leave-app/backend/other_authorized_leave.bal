@@ -38,7 +38,8 @@ const OTHER_AUTHORIZED_ALERT_HEADER = "Other Authorized Leave";
 function submitForApproval(LeaveInput input, string jwt) returns http:Ok|http:BadRequest|http:InternalServerError {
     do {
         employee:Employee & readonly applicant = check employee:getEmployee(input.email);
-        string? leadEmail = applicant.leadEmail;
+        // A blank lead from HR counts as none, as it does on withdrawal and in the scheduler.
+        string? leadEmail = nonBlankEmail(applicant.leadEmail);
         if leadEmail is () {
             string errMsg = "A reporting lead is required to apply for Other Authorized Leave.";
             log:printWarn(errMsg);

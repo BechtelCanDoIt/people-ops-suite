@@ -16,20 +16,21 @@
 
 import ballerina/crypto;
 import ballerina/lang.array;
+import ballerina/mime;
 import ballerina/random;
 
 # Largest sick note accepted, in bytes (5 MB).
-public const int MAX_SICK_NOTE_BYTES = 5242880;
+public const MAX_SICK_NOTE_BYTES = 5242880;
 
 # Content types accepted for a sick note.
-public final readonly & string[] SICK_NOTE_CONTENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+public final readonly & string[] SICK_NOTE_CONTENT_TYPES = [mime:APPLICATION_PDF, mime:IMAGE_JPEG, mime:IMAGE_PNG];
 
 # Id of the encryption key used for new sick notes.
-public const int CURRENT_KEY_ID = 1;
+public const CURRENT_KEY_ID = 1;
 
-const int KEY_LENGTH = 32;
-const int IV_LENGTH = 12;
-const int GCM_TAG_BITS = 128;
+const KEY_LENGTH = 32;
+const IV_LENGTH = 12;
+const GCM_TAG_BITS = 128;
 
 final readonly & byte[] PDF_PREFIX = [0x25, 0x50, 0x44, 0x46, 0x2D];
 final readonly & byte[] PNG_PREFIX = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
@@ -58,13 +59,13 @@ public isolated function detectContentType(byte[] content) returns string|error 
         return error("The sick note must be at most 5 MB.");
     }
     if startsWith(content, PDF_PREFIX) {
-        return "application/pdf";
+        return mime:APPLICATION_PDF;
     }
     if startsWith(content, PNG_PREFIX) {
-        return "image/png";
+        return mime:IMAGE_PNG;
     }
     if startsWith(content, JPEG_PREFIX) {
-        return "image/jpeg";
+        return mime:IMAGE_JPEG;
     }
     return error("Send the sick note as a PDF, JPG or PNG file.");
 }
@@ -132,17 +133,26 @@ public isolated function canDownload(string requesterEmail, string[] requesterGr
 # + contentType - One of `SICK_NOTE_CONTENT_TYPES`
 # + return - `sick-note-<id>` followed by `.pdf`, `.jpg` or `.png`
 public isolated function downloadFileName(int leaveId, string contentType) returns string {
-    string extension = contentType == "application/pdf" ? "pdf" : contentType == "image/png" ? "png" : "jpg";
+    string extension = contentType == mime:APPLICATION_PDF ? "pdf" : contentType == mime:IMAGE_PNG ? "png" : "jpg";
     return string `sick-note-${leaveId}.${extension}`;
 }
 
-// crypto accepts 16- and 24-byte keys too, which would quietly mean AES-128 or AES-192.
+# Check that a key is 32 bytes. crypto also accepts 16- and 24-byte keys, which would quietly mean AES-128 or
+# AES-192.
+#
+# + key - The key to check
+# + return - An error if the key is not 32 bytes
 isolated function checkKeyLength(byte[] key) returns error? {
     if key.length() != KEY_LENGTH {
         return error(string `The sick note key must be ${KEY_LENGTH} bytes for AES-256.`);
     }
 }
 
+# Check whether the content begins with the given bytes.
+#
+# + content - File content
+# + prefix - Expected leading bytes
+# + return - `true` if `content` starts with `prefix`
 isolated function startsWith(byte[] content, byte[] prefix) returns boolean {
     if content.length() < prefix.length() {
         return false;
@@ -155,8 +165,10 @@ isolated function startsWith(byte[] content, byte[] prefix) returns boolean {
     return true;
 }
 
-// random:createIntInRange is a time-seeded LCG that the library documents as not secure, so it is not used for the
-// IV. random:createDecimal draws from java.security.SecureRandom.
+# Generate a random 12-byte IV. random:createIntInRange is a time-seeded LCG that the library documents as not
+# secure, so it is not used here. random:createDecimal draws from java.security.SecureRandom.
+#
+# + return - The IV, or an error
 isolated function randomIv() returns byte[]|error {
     byte[] iv = [];
     foreach int _ in 0 ..< IV_LENGTH {

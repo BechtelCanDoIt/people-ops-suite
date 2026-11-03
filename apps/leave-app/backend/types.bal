@@ -150,6 +150,14 @@ public type LeavePayload record {|
     *database:LeavePayload;
 |};
 
+# Leave and sick note sent together to submit sick leave in France.
+type SickLeaveSubmission record {|
+    # The leave, as sent to `POST /leaves`
+    LeavePayload leave;
+    # The sick note file. Empty when the request has no sick note part
+    byte[] sickNote;
+|};
+
 # Payload for recording leave on behalf of another employee.
 #
 # Carries the same fields as a self-service leave so the notification, calendar

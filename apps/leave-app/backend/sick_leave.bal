@@ -38,10 +38,10 @@ const SICK_NOTE_PART = "sickNote";
 
 # Largest sick leave request accepted, in bytes: the largest sick note plus 1 MB for the leave and the multipart
 # framing. It is also the listener's body limit, as every other endpoint takes a small JSON body.
-const int MAX_SICK_LEAVE_REQUEST_BYTES = sick_note:MAX_SICK_NOTE_BYTES + 1048576;
+const MAX_SICK_LEAVE_REQUEST_BYTES = sick_note:MAX_SICK_NOTE_BYTES + 1048576;
 
 # Largest `leave` part accepted, in bytes.
-const int MAX_LEAVE_PART_BYTES = 65536;
+const MAX_LEAVE_PART_BYTES = 65536;
 
 const ERR_MSG_SUBMIT_LEAVE_FAILED = "Error occurred while submitting a leave";
 const ERR_MSG_SICK_NOTE_TOO_LARGE = "The sick note must be at most 5 MB.";
@@ -49,14 +49,6 @@ const ERR_MSG_SICK_LEAVE_PARTS = "The request must contain exactly one leave par
 const ERR_MSG_SICK_NOTE_NOT_FOUND = "No sick note was found for this leave.";
 const ERR_MSG_SICK_NOTE_UNREADABLE = "The sick note could not be read.";
 const ERR_MSG_SICK_NOTE_FETCH_FAILED = "Error occurred while fetching the sick note";
-
-# Leave and sick note sent together to submit sick leave in France.
-type SickLeaveSubmission record {|
-    # The leave, as sent to `POST /leaves`
-    LeavePayload leave;
-    # The sick note file. Empty when the request has no sick note part
-    byte[] sickNote;
-|};
 
 # Refuse a sick leave request that declares a length over the limit, before any of its body is read. A body sent in
 # chunks declares no length and is not refused here: the listener's `maxEntityBodySize` still bounds it.
@@ -90,6 +82,7 @@ function submitSickLeave(http:Request req, string email, string jwt)
 
     SickLeaveSubmission|error submission = readSickLeaveParts(req);
     if submission is error {
+        log:printWarn("Sick leave request refused", employee = email, reason = submission.message());
         return <http:BadRequest>{
             body: {
                 message: submission.message()
@@ -98,6 +91,7 @@ function submitSickLeave(http:Request req, string email, string jwt)
     }
     string|error contentType = sick_note:detectContentType(submission.sickNote);
     if contentType is error {
+        log:printWarn("Sick note refused", employee = email, reason = contentType.message());
         return <http:BadRequest>{
             body: {
                 message: contentType.message()
@@ -114,6 +108,8 @@ function submitSickLeave(http:Request req, string email, string jwt)
         };
     }
     if !policy:requiresSickNote(submission.leave.leaveType, location) {
+        log:printWarn("Sick leave request refused: not sick leave in France", employee = email,
+                leaveType = submission.leave.leaveType, location = location);
         return <http:BadRequest>{
             body: {
                 message: "This endpoint is only for sick leave in France."
@@ -238,6 +234,7 @@ function downloadSickNote(int leaveId, string requesterEmail, string[] requester
         };
     }
     if sickNote is () {
+        log:printWarn("Sick note not found", leaveId = leaveId, requestedBy = requesterEmail);
         return <http:NotFound>{
             body: {
                 message: ERR_MSG_SICK_NOTE_NOT_FOUND
@@ -254,6 +251,7 @@ function downloadSickNote(int leaveId, string requesterEmail, string[] requester
         };
     }
     if sickNote.deletedAt is string {
+        log:printWarn("Sick note already deleted", leaveId = leaveId, requestedBy = requesterEmail);
         return <http:NotFound>{
             body: {
                 message: ERR_MSG_SICK_NOTE_NOT_FOUND
@@ -275,6 +273,7 @@ function downloadSickNote(int leaveId, string requesterEmail, string[] requester
     byte[]? content = stored is () ? () : stored.content;
     byte[]? iv = stored is () ? () : stored.iv;
     if content is () || iv is () {
+        log:printWarn("Sick note content already cleared", leaveId = leaveId, requestedBy = requesterEmail);
         return <http:NotFound>{
             body: {
                 message: ERR_MSG_SICK_NOTE_NOT_FOUND
@@ -308,9 +307,9 @@ function downloadSickNote(int leaveId, string requesterEmail, string[] requester
 
     http:Response response = new;
     response.setBinaryPayload(file, sickNote.contentType);
-    response.setHeader("Content-Disposition",
+    response.setHeader(mime:CONTENT_DISPOSITION,
             string `attachment; filename="${sick_note:downloadFileName(leaveId, sickNote.contentType)}"`);
-    response.setHeader("Cache-Control", "no-store");
+    response.setHeader(http:CACHE_CONTROL, http:NO_STORE);
     response.setHeader("X-Content-Type-Options", "nosniff");
     return response;
 }

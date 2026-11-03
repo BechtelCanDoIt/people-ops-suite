@@ -15,28 +15,28 @@
 // under the License.
 
 # Leave type value for Compassionate Leave.
-public const string COMPASSIONATE = "compassionate";
+public const COMPASSIONATE = "compassionate";
 
 # Leave type value for Other Authorized Leave.
-public const string OTHER_AUTHORIZED = "other_authorized";
+public const OTHER_AUTHORIZED = "other_authorized";
 
 # Leave type value for Sick Leave.
-public const string SICK = "sick";
+public const SICK = "sick";
 
 # Leave type value for Sabbatical Leave.
-const string SABBATICAL = "sabbatical";
+const SABBATICAL = "sabbatical";
 
 # Employee location for which the France-only rules apply.
-public const string FRANCE = "France";
+public const FRANCE = "France";
 
 # Maximum length of a rejection reason, in characters.
-public const int MAX_REJECTION_REASON_LENGTH = 500;
+public const MAX_REJECTION_REASON_LENGTH = 500;
 
 # Status of a request that is awaiting a decision.
-const string STATUS_PENDING = "PENDING";
+const STATUS_PENDING = "PENDING";
 
 # Status of a request that has been approved.
-const string STATUS_APPROVED = "APPROVED";
+const STATUS_APPROVED = "APPROVED";
 
 # Check whether an employee may apply for the given leave type at their location.
 #

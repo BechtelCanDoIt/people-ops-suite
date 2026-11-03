@@ -16,7 +16,7 @@
 
 import ballerina/time;
 
-const int SECONDS_PER_DAY = 86400;
+const SECONDS_PER_DAY = 86400;
 
 # Parses a `yyyy-mm-dd` string into the UTC instant at midnight of that day.
 #

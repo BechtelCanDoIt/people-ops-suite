@@ -144,7 +144,8 @@ public isolated function insertLeaveToDatabase(database:LeaveInput input, boolea
 # + return - Calculated leave in validation mode, Ok when the leave is submitted, BadRequest for an invalid leave,
 # otherwise InternalServerError
 function submitLeave(LeavePayload payload, string email, string jwt, boolean isValidationOnlyMode,
-        database:SickNoteInput? sickNote = ()) returns CalculatedLeave|http:Ok|http:BadRequest|http:InternalServerError {
+        database:SickNoteInput? sickNote = ())
+    returns CalculatedLeave|http:Ok|http:BadRequest|http:InternalServerError {
 
     do {
         [time:Utc, time:Utc]|error validatedDateRange = validateDateRange(payload.startDate, payload.endDate);
