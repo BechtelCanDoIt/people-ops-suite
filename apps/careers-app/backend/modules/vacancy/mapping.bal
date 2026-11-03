@@ -14,195 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import wso2/careers_app.apply;
-
-import ballerina/lang.array;
-import ballerina/lang.value;
-import ballerina/log;
-
-isolated function jobTypeOf(string employmentType) returns string =>
-    employmentType == EMPLOYMENT_PERMANENT ? EMPLOYMENT_FULL_TIME : employmentType;
-
-isolated function departmentNameOf(AtsBusinessUnit[] units, int businessUnitId, int departmentId) returns string {
-    foreach AtsBusinessUnit unit in units {
-        if unit.id != businessUnitId {
-            continue;
-        }
-        foreach AtsDepartment department in unit.departments ?: [] {
-            if department.id == departmentId {
-                return department.department;
-            }
-        }
-    }
-    return UNKNOWN_NAME;
-}
-
-// The name of the office, or nothing when the vacancy has no office or it is not in the companies.
-isolated function officeNameOf(AtsCompany[] companies, int? officeId) returns string? {
-    if officeId is () {
-        return ();
-    }
-    foreach AtsCompany company in companies {
-        foreach AtsOffice office in company.offices ?: [] {
-            if office.id === officeId {
-                return office.office;
-            }
-        }
-    }
-    return ();
-}
-
-// The offices of a vacancy keyed by position; none for a remote vacancy or one without a known office.
-isolated function officeLocationsOf(AtsVacancy vacancy, AtsCompany[] companies) returns map<string> {
-    string? office = vacancy.modeOfWork == MODE_REMOTE ? () : officeNameOf(companies, vacancy.officeId);
-    return office is string ? {"0": office} : {};
-}
-
-isolated function designationNameOf(AtsCareerFunction[] careerFunctions, int designationId) returns string|error {
-    string[] names = [];
-    foreach AtsCareerFunction careerFunction in careerFunctions {
-        foreach AtsDesignation designation in careerFunction.designations ?: [] {
-            if designation.id == designationId {
-                names.push(designation.designation);
-            }
-        }
-    }
-    if names.length() == 0 {
-        return error(string `No designation found for ${designationId}`);
-    }
-    if names.length() > 1 {
-        return error(string `Multiple designations found for ${designationId}`);
-    }
-    return names[0];
-}
-
-isolated function basicInfoOf(AtsVacancy vacancy, AtsBusinessUnit[] units) returns VacancyBasicInfo => {
-    id: vacancy.id,
-    title: vacancy.title,
-    publish_status: vacancy.visibility,
-    country: vacancy.hiringLocations,
-    job_type: jobTypeOf(vacancy.employmentType),
-    team: departmentNameOf(units, vacancy.businessUnitId, vacancy.departmentId),
-    published_on: vacancy.publishedOn ?: ""
-};
-
-// The other vacancies with the same hiring locations.
-isolated function similarListings(AtsVacancy current, AtsVacancy[] sameDesignation, AtsBusinessUnit[] units)
-        returns VacancyBasicInfo[] {
-    string[] currentLocations = array:sort(current.hiringLocations.clone());
-    VacancyBasicInfo[] similar = [];
-    foreach AtsVacancy vacancy in sameDesignation {
-        if vacancy.id != current.id && array:sort(vacancy.hiringLocations.clone()) == currentLocations {
-            similar.push(basicInfoOf(vacancy, units));
-        }
-    }
-    return similar;
-}
-
-// The sections of the job description. A description that is not in the expected shape never fails the job page: a
-// section that is not text is left out, and any other value is shown as text.
-isolated function jdContentOf(json jdHtmlObject) returns JdContent {
-    json content = jdHtmlObject;
-    if jdHtmlObject is string {
-        json|error parsed = value:fromJsonString(jdHtmlObject);
-        if parsed is error {
-            return {mainContent: jdHtmlObject};
-        }
-        content = parsed;
-    }
-    if content is () {
-        return {};
-    }
-    if content is string {
-        return {mainContent: content};
-    }
-    if content is map<json> {
-        return {
-            mainContent: sectionOf(content["mainContent"]) ?: "",
-            taskInformation: sectionOf(content["taskInformation"]),
-            additionalContent: sectionOf(content["additionalContent"])
-        };
-    }
-    return {mainContent: jdHtmlObject is string ? jdHtmlObject : content.toString()};
-}
-
-// The text of a job description section, or nothing when it is missing or not text.
-isolated function sectionOf(json section) returns string? => section is string ? section : ();
-
-isolated function detailOf(AtsVacancy vacancy, AtsCompany[] companies, AtsBusinessUnit[] units,
-        AtsCareerFunction[] careerFunctions, AtsVacancy[] sameDesignation) returns JobDetail|error {
-    JdContent jd = jdContentOf(vacancy.jdHtmlObject);
-    string|error foundDesignation = designationNameOf(careerFunctions, vacancy.designationId);
-    if foundDesignation is error {
-        log:printWarn("The vacancy's designation is not in the career functions exactly once", vacancyId = vacancy.id,
-            designationId = vacancy.designationId);
-    }
-    string designation = foundDesignation is string ? foundDesignation : UNKNOWN_NAME;
-    boolean isRemote = vacancy.modeOfWork == MODE_REMOTE;
-    return {
-        id: vacancy.id,
-        title: vacancy.title,
-        designation,
-        team: departmentNameOf(units, vacancy.businessUnitId, vacancy.departmentId),
-        country: vacancy.hiringLocations,
-        job_type: jobTypeOf(vacancy.employmentType),
-        allow_remote: isRemote || vacancy.modeOfWork == MODE_HYBRID,
-        office_locations: officeLocationsOf(vacancy, companies),
-        publish_status: vacancy.visibility,
-        published_on: vacancy.publishedOn,
-        mainContent: jd.mainContent,
-        taskInformation: jd.taskInformation,
-        additionalContent: jd.additionalContent,
-        similar_job_listing: similarListings(vacancy, sameDesignation, units)
-    };
-}
-
-// Keys each value by its position in the list.
-isolated function indexed(string[] values) returns map<string> {
-    map<string> byIndex = {};
-    foreach int i in 0 ..< values.length() {
-        byIndex[i.toString()] = values[i];
-    }
-    return byIndex;
-}
-
-// The team names and hiring locations.
-isolated function orgStructureOf(AtsCompany[] companies, AtsBusinessUnit[] units, AtsAppConfig? config)
-        returns OrgStructure {
-    string[] teams = [];
-    foreach AtsBusinessUnit unit in units {
-        foreach AtsDepartment department in unit.departments ?: [] {
-            if teams.indexOf(department.department) is () {
-                teams.push(department.department);
-            }
-        }
-    }
-
-    string[] companyLocations = from AtsCompany company in companies
-        select company.location;
-    string[] locations = companyLocations;
-    if config is AtsAppConfig {
-        map<string> unique = {};
-        foreach AtsCustomHiringLocation custom in config.customHiringLocationMap {
-            string location = custom.location.toUpperAscii().trim();
-            unique[location] = location;
-            foreach string mapped in custom.customMap {
-                string mappedLocation = mapped.toUpperAscii().trim();
-                unique[mappedLocation] = mappedLocation;
-            }
-        }
-        foreach string companyLocation in companyLocations {
-            string location = companyLocation.toUpperAscii().trim();
-            unique[location] = location;
-        }
-        locations = [];
-        if config.globalHiringTitle != "" {
-            locations.push(config.globalHiringTitle.toUpperAscii().trim());
-        }
-        locations.push(...unique.toArray().sort());
-    }
-    return {location_list: indexed(locations), team_list: indexed(teams)};
-}
+import wso2/careers_app.types;
 
 // The status the web app shows for an ATS interview status.
 isolated function interviewStatusOf(string atsStatus) returns string {
@@ -279,25 +91,8 @@ isolated function applicationStatusOf(string atsStatus) returns string {
     return "Applied";
 }
 
-// The team of each published vacancy, keyed by vacancy id.
-isolated function departmentsOf(json jobs) returns map<string> {
-    map<string> departments = {};
-    if jobs is json[] {
-        foreach json job in jobs {
-            if job is map<json> {
-                json id = job["id"];
-                json team = job["team"];
-                if id is int && team is string {
-                    departments[id.toString()] = team;
-                }
-            }
-        }
-    }
-    return departments;
-}
-
 // The candidate's applications, newest first, without the ones that were deleted.
-isolated function applicationsOf(AtsHistoryEntry[] history, map<string> departments) returns ApplicationSummary[] =>
+isolated function applicationsOf(AtsHistoryEntry[] history) returns ApplicationSummary[] =>
     from AtsHistoryEntry entry in history
     where entry.status != CANDIDATE_STATUS_DELETED
     order by entry.id descending
@@ -305,7 +100,6 @@ isolated function applicationsOf(AtsHistoryEntry[] history, map<string> departme
         id: entry.id.toString(),
         jobId: entry.vacancyId.toString(),
         jobTitle: entry.vacancyTitle ?: "",
-        department: departments[entry.vacancyId.toString()] ?: "",
         appliedDate: entry.createdOn ?: "",
         updatedDate: entry.updatedOn ?: entry.createdOn ?: "",
         status: applicationStatusOf(entry.status)
@@ -371,7 +165,7 @@ isolated function atsUpdateOf(ProfileChanges changes) returns AtsCandidateUpdate
     }
     string? contactNo = changes?.contactNo;
     if contactNo is string {
-        if !apply:isValidPhone(contactNo.trim()) {
+        if !types:isValidPhone(contactNo.trim()) {
             return "Enter the phone number in international format, for example +94771234567.";
         }
         update.contactNo = contactNo.trim();
@@ -391,28 +185,4 @@ isolated function atsUpdateOf(ProfileChanges changes) returns AtsCandidateUpdate
         update.university = university;
     }
     return update;
-}
-
-// The candidate in the form the ATS takes, or the reason it cannot be accepted.
-isolated function atsCandidateOf(CandidateApplication candidate, string employmentType, int vacancyId)
-        returns AtsCandidate|string {
-    AtsCandidate atsCandidate = {
-        ...candidate,
-        vacancyId,
-        status: CANDIDATE_STATUS_CREATED,
-        appliedFrom: APPLIED_FROM_CAREER_SITE
-    };
-    if employmentType == EMPLOYMENT_INTERNSHIP {
-        string? university = candidate?.university;
-        if university is () || university.trim() == "" {
-            return "University is required for internship applications.";
-        }
-        atsCandidate.address = ADDRESS_NOT_APPLICABLE;
-    } else {
-        if candidate.address.trim() == "" {
-            return "Address is required for this vacancy.";
-        }
-        _ = atsCandidate.removeIfHasKey("university");
-    }
-    return atsCandidate;
 }
