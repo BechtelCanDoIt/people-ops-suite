@@ -14,8 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Button, Typography } from "@mui/material";
-import { ArrowLeft } from "lucide-react";
+import { Button, Typography } from "@wso2/oxygen-ui";
+import { ArrowLeft } from "@wso2/oxygen-ui-icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -24,12 +24,18 @@ import {
   type ApplicationInterview,
   type DocumentsStatus,
   type OfferAnswer,
-  type OfferLetter,
   State,
 } from "@/types/types";
 import CenteredSpinner from "@component/common/CenteredSpinner";
 import PageContainer from "@component/common/PageContainer";
-import { ApplicationStatus, OFFER_CONFLICT_ERROR, OFFER_EXPIRED_ERROR, SnackMessage } from "@config/constant";
+import { CareersSiteUrl } from "@config/config";
+import {
+  APPLICATION_FEEDBACK_ENABLED,
+  ApplicationStatus,
+  OFFER_CONFLICT_ERROR,
+  OFFER_EXPIRED_ERROR,
+  SnackMessage,
+} from "@config/constant";
 import { useAppAuthContext } from "@context/AuthContext";
 import {
   type ApplicationExtras,
@@ -45,8 +51,8 @@ import {
 } from "@slices/careersSlice/careers";
 import { enqueueSnackbarMessage } from "@slices/commonSlice/common";
 import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
-import { jobPath } from "@utils/jobFilterUtils";
-import { fetchDocumentsStatus, fetchInterviews, fetchOfferLetter } from "@utils/profileService";
+import { fetchDocumentsStatus, fetchInterviews } from "@utils/profileService";
+import { pillButtonSx } from "@utils/styles";
 import AcceptOfferDialog from "@view/applications/components/AcceptOfferDialog";
 import ApplicationDetails from "@view/applications/components/ApplicationDetails";
 import ApplicationList from "@view/applications/components/ApplicationList";
@@ -62,8 +68,8 @@ const Applications = () => {
   const { getToken } = useAppAuthContext();
   const applications = useAppSelector((state: RootState) => state.careers.applications);
   const applicationsState = useAppSelector((state: RootState) => state.careers.applicationsState);
-  const jobs = useAppSelector((state: RootState) => state.careers.jobs);
-  const jobsState = useAppSelector((state: RootState) => state.careers.jobsState);
+  // The email the candidate signed in with, which the applications are found by.
+  const signedInEmail = useAppSelector((state: RootState) => state.auth.userInfo?.email ?? state.auth.userInfo?.username);
 
   // The list, or one application's details when the URL has an id.
   const { id: applicationId } = useParams<{ id: string }>();
@@ -74,6 +80,7 @@ const Applications = () => {
   const dismissedFeedbackIds = useAppSelector((state: RootState) => state.careers.dismissedFeedbackIds);
   const [sendingFeedback, setSendingFeedback] = useState(false);
   const feedbackDue =
+    APPLICATION_FEEDBACK_ENABLED &&
     selectedApplication?.status === ApplicationStatus.Rejected &&
     !selectedApplication.feedbackSubmitted &&
     !dismissedFeedbackIds.includes(selectedApplication.id);
@@ -106,28 +113,6 @@ const Applications = () => {
   // shows it, and the page asks the backend again when it is missing, failed or out of date.
   const version = selectedApplication ? extrasVersionOf(selectedApplication) : "";
   const markLoaded = (): LoadedMark => ({ at: Date.now(), version });
-
-  const hasOffer =
-    selectedApplication?.status === ApplicationStatus.Offer ||
-    selectedApplication?.status === ApplicationStatus.OfferAccepted;
-  // The stored letter is hidden once the offer is declined or the application moves on, since it stays in the store.
-  const offerLetter: OfferLetter | null = hasOffer ? (extras?.offerLetter ?? null) : null;
-
-  // The offer letter, shown once the candidate has an offer or has accepted one; a failed load shows nothing.
-  useEffect(() => {
-    if (!selectedId || !hasOffer || isExtrasFresh(extras, "offerLetter", version)) return;
-    let cancelled = false;
-    getToken()
-      .then((token) => fetchOfferLetter(token, selectedId))
-      .then((letter) => {
-        if (!cancelled) keep(selectedId, { offerLetter: letter, loaded: { offerLetter: markLoaded() } });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, hasOffer, getToken, generation, version]);
 
   // The interviews of the opened application, past and upcoming; none when they cannot be loaded.
   useEffect(() => {
@@ -241,9 +226,10 @@ const Applications = () => {
       {applicationId ? (
         <>
           <Button
+            variant="outlined"
             startIcon={<ArrowLeft size={16} />}
             onClick={() => navigate("/applications")}
-            sx={{ mb: 2, ml: -1, fontWeight: 600 }}
+            sx={{ ...pillButtonSx, mb: 2, px: 2.5 }}
           >
             Applications
           </Button>
@@ -251,16 +237,10 @@ const Applications = () => {
           {selectedApplication ? (
             <ApplicationDetails
               application={selectedApplication}
-              jobOpen={jobsState !== State.success || jobs.some((job) => job.id === selectedApplication.jobId)}
-              onOpenJob={(jobId) => {
-                const job = jobs.find((j) => j.id === jobId);
-                navigate(job ? jobPath(job) : `/jobs/${jobId}`);
-              }}
               canAcceptOffer={!applications.some((a) => a.status === ApplicationStatus.OfferAccepted)}
               onAcceptOffer={() => setOfferDialog("accept")}
               onDeclineOffer={() => setOfferDialog("decline")}
               onSubmitDocuments={() => navigate(`/applications/${selectedApplication.id}/documents`)}
-              offerLetter={offerLetter}
               interviews={interviews}
               documentsStatus={documentsStatus}
               onRetryDocumentsStatus={retryDocumentsStatus}
@@ -275,8 +255,9 @@ const Applications = () => {
         <ApplicationList
           applications={applications}
           applicationsState={applicationsState}
+          signedInEmail={signedInEmail}
           onView={(id) => navigate(`/applications/${id}`)}
-          onBrowseJobs={() => navigate("/jobs")}
+          onBrowseJobs={() => window.open(CareersSiteUrl, "_blank", "noopener,noreferrer")}
           onRetry={() => dispatch(retryApplications())}
         />
       )}

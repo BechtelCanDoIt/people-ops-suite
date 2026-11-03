@@ -30,9 +30,8 @@ import * as api from "@utils/profileService";
 
 // The config reads window.config when it loads, which does not exist in these tests.
 vi.mock("@config/config", () => ({
-  AppConfig: { serviceUrls: { candidates: "", jobs: "", applications: "" } },
+  AppConfig: { serviceUrls: { candidates: "", applications: "" } },
   ServiceBaseUrl: "",
-  UseMockProfile: false,
 }));
 
 vi.mock("@utils/profileService", () => ({
@@ -58,7 +57,6 @@ const previousApplication: Application = {
   id: "a1",
   jobId: "1",
   jobTitle: "Engineer",
-  department: "Engineering",
   appliedDate: "2026-09-01",
   status: ApplicationStatus.Offer,
 };

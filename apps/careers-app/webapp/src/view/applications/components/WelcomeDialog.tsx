@@ -14,8 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Button, Typography } from "@mui/material";
-import { Check } from "lucide-react";
+import { Button, Typography } from "@wso2/oxygen-ui";
+import { Check } from "@wso2/oxygen-ui-icons-react";
 
 import StatusDialog from "@component/common/StatusDialog";
 import { pillButtonSx } from "@utils/styles";

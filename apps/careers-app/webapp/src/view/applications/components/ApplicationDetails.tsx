@@ -14,17 +14,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Box, Button, Card, CardContent, Skeleton, Stack, Step, StepLabel, Stepper, Typography } from "@mui/material";
-import { Award, Info } from "lucide-react";
+import { Box, Button, Card, CardContent, Skeleton, Stack, Step, StepLabel, Stepper, Typography } from "@wso2/oxygen-ui";
+import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 
-import DOMPurify from "dompurify";
-import { useState } from "react";
-
-import type { Application, ApplicationInterview, DocumentsStatus, OfferLetter } from "@/types/types";
+import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
 import Callout from "@component/common/Callout";
-import { orangeTextOf } from "@config/brand";
-import { ApplicationStatus } from "@config/constant";
+import { ApplicationStatus, OFFER_RESPONSE_ENABLED } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
   STAGES,
@@ -43,15 +39,10 @@ import ProgressHistory from "@view/applications/components/ProgressHistory";
 
 interface ApplicationDetailsProps {
   application: Application;
-  // Whether the vacancy is still listed.
-  jobOpen: boolean;
-  onOpenJob: (jobId: string) => void;
   canAcceptOffer: boolean;
   onAcceptOffer: () => void;
   onDeclineOffer: () => void;
   onSubmitDocuments: () => void;
-  // The offer letter that was sent, when the ATS has it.
-  offerLetter: OfferLetter | null;
   // The interviews of the application, past and upcoming.
   interviews: ApplicationInterview[];
   // Documents submission status; undefined while loading, null when it failed.
@@ -61,18 +52,14 @@ interface ApplicationDetailsProps {
 
 const ApplicationDetails = ({
   application,
-  jobOpen,
-  onOpenJob,
   canAcceptOffer,
   onAcceptOffer,
   onDeclineOffer,
   onSubmitDocuments,
-  offerLetter,
   interviews,
   documentsStatus,
   onRetryDocumentsStatus,
 }: ApplicationDetailsProps) => {
-  const [letterOpen, setLetterOpen] = useState(false);
   const actionNeeded = isOffer(application);
   // An upcoming interview is shown in orange.
   const interviewComing = upcomingInterviewOf(application, interviews) !== undefined;
@@ -92,7 +79,7 @@ const ApplicationDetails = ({
               {application.jobTitle}
             </Typography>
             <Typography fontSize="0.9rem" color="text.secondary" mt={0.5}>
-              {application.department} · Applied on {formatDate(application.appliedDate)}
+              Applied on {formatDate(application.appliedDate)}
             </Typography>
           </Box>
           <ApplicationStatusBadge status={application.status} />
@@ -102,7 +89,13 @@ const ApplicationDetails = ({
           fontWeight={actionNeeded || interviewComing ? 700 : 500}
           sx={{
             mt: 1.5,
-            color: (theme) => (actionNeeded || interviewComing ? orangeTextOf(theme) : theme.palette.text.secondary),
+            // The darker orange on the light theme, which is the one with enough contrast against white.
+            color: (theme) =>
+              actionNeeded || interviewComing
+                ? theme.palette.mode === "dark"
+                  ? theme.palette.primary.main
+                  : theme.palette.primary.dark
+                : theme.palette.text.secondary,
           }}
         >
           {nextStepOf(application, interviews)}
@@ -149,7 +142,7 @@ const ApplicationDetails = ({
           </Callout>
         )}
 
-        {isOffer(application) && !offerExpired && (
+        {OFFER_RESPONSE_ENABLED && isOffer(application) && !offerExpired && (
           <OfferActions canAccept={canAcceptOffer} onAccept={onAcceptOffer} onDecline={onDeclineOffer} />
         )}
 
@@ -213,30 +206,6 @@ const ApplicationDetails = ({
           </Callout>
         )}
 
-        {offerLetter && (
-          <Box sx={{ mb: 3, p: 2, border: "1px solid", borderColor: "divider", borderRadius: "8px" }}>
-            <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
-              Your offer letter
-            </Typography>
-            <Typography fontSize="0.9rem" color="text.primary" mt={0.5} sx={{ wordBreak: "break-word" }}>
-              {offerLetter.subject}
-            </Typography>
-            <Typography fontSize="0.85rem" color="text.secondary">
-              Sent on {formatDate(offerLetter.sentOn)}
-              {offerLetter.threadId && ` · Email reference: ${offerLetter.threadId}`}
-            </Typography>
-            <Button size="small" onClick={() => setLetterOpen((open) => !open)} sx={{ fontWeight: 600, mt: 1, ml: -1 }}>
-              {letterOpen ? "Hide letter" : "Show letter"}
-            </Button>
-            {letterOpen && (
-              <Box
-                sx={{ mt: 1, fontSize: "0.9rem", overflowX: "auto", "& img": { maxWidth: "100%" } }}
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(offerLetter.html) }}
-              />
-            )}
-          </Box>
-        )}
-
         {application.status === ApplicationStatus.OfferDeclined && (
           <Callout tone="brand" icon={<Info size={20} color="#6B7280" />} sx={{ mb: 3 }}>
             <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
@@ -256,12 +225,6 @@ const ApplicationDetails = ({
         <InterviewsSection interviews={interviews} />
 
         <ProgressHistory entries={historyOf(application, interviews)} />
-
-        {jobOpen && (
-          <Button size="small" onClick={() => onOpenJob(application.jobId)} sx={{ fontWeight: 600 }}>
-            View job
-          </Button>
-        )}
       </CardContent>
     </Card>
   );

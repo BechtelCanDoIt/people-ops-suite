@@ -25,7 +25,6 @@ export const SnackMessage = {
   error: {
     fetchApplications: "Unable to retrieve your applications.",
     fetchProfile: "Unable to retrieve your profile.",
-    submitApplication: "Failed to submit application. Please try again.",
     saveProfile: "Unable to save your changes. Please try again.",
     respondToOffer: "Unable to record your response to the offer. Please try again.",
     sendFeedback: "Unable to send your feedback. Please try again.",
@@ -45,7 +44,11 @@ export const SnackMessage = {
 // The names of the errors raised when the backend refuses an offer answer.
 export const OFFER_CONFLICT_ERROR = "OfferConflictError";
 export const OFFER_EXPIRED_ERROR = "OfferExpiredError";
-export const JOB_NOT_FOUND_ERROR = "JobNotFoundError";
+
+// The backend has no route yet for answering an offer or sending rejection feedback, so these keep both actions
+// hidden. Turn each on when its route exists.
+export const OFFER_RESPONSE_ENABLED = false;
+export const APPLICATION_FEEDBACK_ENABLED = false;
 
 export enum ApplicationStatus {
   Applied = "Applied",

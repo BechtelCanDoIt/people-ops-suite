@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Rating, TextField, Typography } from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Rating, TextField, Typography } from "@wso2/oxygen-ui";
 import { useState } from "react";
 
 import type { ApplicationFeedback } from "@/types/types";

@@ -23,11 +23,6 @@ export enum State {
   idle = "idle",
 }
 
-export enum ThemeMode {
-  Light = "light",
-  Dark = "dark",
-}
-
 export interface PreLoaderProps {
   message?: string;
   isLoading?: boolean;
@@ -52,29 +47,6 @@ export type EditableProfileFields = Pick<
   "firstName" | "lastName" | "gender" | "contactNo" | "address" | "university"
 >;
 
-export interface Job {
-  id: string;
-  title: string;
-  team: string;
-  country: string[];
-  jobType: string;
-  publishStatus: string;
-  postedDate: string;
-}
-
-// What an applicant submits alongside their CV.
-export interface GuestApplicationDetails {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  university?: string;
-  authorizedToWork: boolean;
-  // Whether the candidate agreed to receive emails from WSO2.
-  marketingEmails: boolean;
-}
-
 interface ApplicationTimelineEvent {
   stage: ApplicationStatus;
   date: string;
@@ -96,7 +68,6 @@ export interface Application {
   id: string;
   jobId: string;
   jobTitle: string;
-  department: string;
   appliedDate: string;
   // When the application last changed, which is when it reached its current status.
   updatedDate?: string;
@@ -115,18 +86,6 @@ export interface OfferAnswer {
   response: "accepted" | "declined";
   reason?: string;
   comment?: string;
-}
-
-// The offer letter a candidate was sent.
-export interface OfferLetter {
-  // The subject of the email the letter was sent in.
-  subject: string;
-  // ISO date-time the letter was sent.
-  sentOn: string;
-  // A reference to the email thread the letter was sent in; empty when there is none.
-  threadId: string;
-  // The letter itself, as HTML.
-  html: string;
 }
 
 // The personal details a new joiner fills in after accepting an offer.

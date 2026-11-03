@@ -14,119 +14,54 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Box, Button, Stack, Tooltip, useTheme } from "@mui/material";
-import { Briefcase, ClipboardList, LogOut, Moon, Sun, User } from "lucide-react";
+import { Box, Button, Stack, Tooltip, Typography, useColorScheme } from "@wso2/oxygen-ui";
+import { ClipboardList, LogOut, Moon, Sun, User } from "@wso2/oxygen-ui-icons-react";
 import { Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
 
-import { useContext, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import SnackbarListener from "@component/common/SnackbarListener";
 import { useAppAuthContext } from "@context/AuthContext";
-import { ColorModeContext } from "@context/ColorModeContext";
 
-import wso2LogoBlack from "@assets/images/wso2-logo_black.svg";
-import wso2LogoWhite from "@assets/images/wso2-logo_white.svg";
+import wso2LogoBlack from "@assets/images/wso2-logo-black.svg";
+import wso2LogoWhite from "@assets/images/wso2-logo-white.svg";
+
 import { State } from "@/types/types";
+import { useIsDark } from "@config/brand";
+import { CareersSiteUrl } from "@config/config";
 import {
   applicationsFailed,
   clearUserData,
   loadApplications,
-  loadFailed,
-  loadJobDetail,
-  loadJobs,
-  loadOrgStructure,
   loadProfile,
   profileFailed,
-  setSavedJobs,
 } from "@slices/careersSlice/careers";
 import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
+import { noteForcedSignOut } from "@utils/profileService";
 import { dataNeededBy } from "@utils/routeData";
-import { readSavedJobs } from "@utils/savedJobs";
 
-const NAV_ITEMS = [
-  { path: "/jobs", label: "Jobs", icon: Briefcase },
+// The height of the logo and the size of the word next to it, in pixels, so the two match.
+const BRAND_SIZE = 22;
+
+// The pages of this app. Jobs are found on the wso2.com careers page, so there is no link for them here.
+const NAV_ITEMS: { label: string; icon: typeof ClipboardList; path: string }[] = [
   { path: "/applications", label: "Applications", icon: ClipboardList },
   { path: "/profile", label: "Profile", icon: User },
 ];
 
 const AppShell = () => {
-  const theme = useTheme();
-  const colorMode = useContext(ColorModeContext);
-  const isDark = theme.palette.mode === "dark";
+  const { setMode } = useColorScheme();
+  const isDark = useIsDark();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { getToken: getAccessToken, isSignedIn, appSignIn, appSignOut } = useAppAuthContext();
-  const jobsState = useAppSelector((state: RootState) => state.careers.jobsState);
-  const orgStructureState = useAppSelector((state: RootState) => state.careers.orgStructureState);
   const applicationsState = useAppSelector((state: RootState) => state.careers.applicationsState);
   const profileState = useAppSelector((state: RootState) => state.careers.profileState);
   const sessionExpired = useAppSelector((state: RootState) => state.careers.sessionExpired);
-  const jobs = useAppSelector((state: RootState) => state.careers.jobs);
-  const jobDetails = useAppSelector((state: RootState) => state.careers.jobDetails);
-
-  // Latest job details for the prefetch below.
-  const jobDetailsRef = useRef(jobDetails);
-  jobDetailsRef.current = jobDetails;
 
   // The data the open route needs.
-  const {
-    jobs: needsJobs,
-    orgStructure: needsOrgStructure,
-    jobDetails: needsJobDetails,
-    applications: needsApplications,
-    profile: needsProfile,
-  } = dataNeededBy(useMatches());
-
-  // Loads the job list and org structure for the open route.
-  useEffect(() => {
-    const loadJobList = needsJobs && jobsState === State.idle;
-    const loadOrgs = needsOrgStructure && orgStructureState === State.idle;
-    if (!loadJobList && !loadOrgs) return;
-    // Set when the effect is replaced before the token arrives, so the newer one does the load.
-    let cancelled = false;
-    getAccessToken()
-      .then((token) => {
-        if (cancelled) return;
-        if (loadJobList) dispatch(loadJobs(token));
-        if (loadOrgs) dispatch(loadOrgStructure(token));
-      })
-      .catch(() => {
-        if (!cancelled) dispatch(loadFailed());
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, getAccessToken, jobsState, orgStructureState, needsJobs, needsOrgStructure]);
-
-  // Prefetches each job's detail in the background.
-  useEffect(() => {
-    if (jobsState !== State.success || !needsJobDetails) return;
-    const queue = jobs.map((job) => job.id).filter((jobId) => !jobDetailsRef.current[jobId]);
-    if (queue.length === 0) return;
-
-    // Two at a time; stops after two failures.
-    let cancelled = false;
-    let failures = 0;
-    const worker = async () => {
-      try {
-        const token = await getAccessToken();
-        while (!cancelled && failures < 2) {
-          const jobId = queue.shift();
-          if (!jobId) return;
-          const result = await dispatch(loadJobDetail({ accessToken: token, jobId }));
-          if (loadJobDetail.rejected.match(result)) failures += 1;
-        }
-      } catch {
-        // No token: the job page loads its own detail on demand.
-      }
-    };
-    Array.from({ length: 2 }, worker);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [jobsState, jobs, needsJobDetails, dispatch, getAccessToken]);
+  const { applications: needsApplications, profile: needsProfile } = dataNeededBy(useMatches());
 
   // Loads the candidate's applications and profile for the open route.
   useEffect(() => {
@@ -156,30 +91,19 @@ const AppShell = () => {
     if (!isSignedIn) dispatch(clearUserData());
   }, [isSignedIn, dispatch]);
 
-  // Restores the candidate's saved jobs on sign-in.
-  const userId = useAppSelector((state: RootState) => state.auth.decodedIdToken?.sub);
-  const savedJobsOf = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isSignedIn || !userId) {
-      savedJobsOf.current = null;
-      return;
-    }
-    if (savedJobsOf.current === userId) return;
-    savedJobsOf.current = userId;
-    dispatch(setSavedJobs(readSavedJobs(userId)));
-  }, [isSignedIn, userId, dispatch]);
-
-  // Signs the candidate out when the backend refuses the access token.
+  // Signs the candidate out when the backend refuses the access token and a new one could not be had. The sign-out is
+  // noted, so the entry page does not start the same sign-in again if the backend keeps refusing the session.
   useEffect(() => {
     if (!sessionExpired) return;
     dispatch(clearUserData());
+    noteForcedSignOut();
     appSignOut();
   }, [sessionExpired, dispatch, appSignOut]);
 
-  // Guests only see the Jobs link.
-  const navItems = isSignedIn ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.path === "/jobs");
+  // The links are for signed-in candidates; a guest has none.
+  const navItems = isSignedIn ? NAV_ITEMS : [];
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const isActive = (path?: string) => !!path && location.pathname.startsWith(path);
 
   // Resets the scroll of the page container on a route change.
   const contentRef = useRef<HTMLDivElement>(null);
@@ -197,24 +121,40 @@ const AppShell = () => {
           height: "60px",
           flexShrink: 0,
           zIndex: 20,
-          backgroundColor: isDark ? "#00000026" : "#FFFFFF",
-          backdropFilter: isDark ? "blur(16px)" : "none",
+          backgroundColor: isDark ? "transparent" : "#FFFFFF",
           borderBottom: "1px solid",
-          borderColor: isDark ? "rgba(255,255,255,0.08)" : "divider",
-          boxShadow: isDark ? "0 4px 18px -8px rgba(0,0,0,0.6)" : "0 4px 18px -10px rgba(7,20,46,0.18)",
+          borderColor: "divider",
+          boxShadow: isDark ? "none" : "0 4px 18px -10px rgba(7,20,46,0.18)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           px: { xs: 2, md: 3 },
         }}
       >
-        <Box component="a" href="https://wso2.com" aria-label="Go to the WSO2 home page" sx={{ display: "flex" }}>
+        {/* The logo and the word next to it are one link, to the vacancies on the wso2.com careers page. */}
+        <Box
+          component="a"
+          href={CareersSiteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="WSO2 Careers: see the open positions"
+          sx={{ display: "flex", alignItems: "center", gap: "3px", textDecoration: "none", color: "text.primary" }}
+        >
           <Box
             component="img"
-            src={theme.palette.mode === "dark" ? wso2LogoWhite : wso2LogoBlack}
+            src={isDark ? wso2LogoWhite : wso2LogoBlack}
             alt=""
-            sx={{ height: 40, width: "auto" }}
+            sx={{ height: BRAND_SIZE, width: "auto" }}
           />
+          <Typography
+            component="span"
+            fontSize={BRAND_SIZE}
+            lineHeight={1}
+            fontWeight={600}
+            color="text.primary"
+          >
+            Careers
+          </Typography>
         </Box>
 
         <Stack direction="row" alignItems="center" gap={0.5}>
@@ -223,7 +163,7 @@ const AppShell = () => {
             {navItems.map((item) => {
               const active = isActive(item.path);
               return (
-                <Tooltip key={item.path} title={item.label} arrow disableInteractive>
+                <Tooltip key={item.label} title={item.label} arrow disableInteractive>
                   <Box
                     component="button"
                     onClick={() => navigate(item.path)}
@@ -258,7 +198,7 @@ const AppShell = () => {
           <Tooltip title={isDark ? "Switch to light mode" : "Switch to dark mode"} arrow disableInteractive>
             <Box
               component="button"
-              onClick={colorMode.toggleColorMode}
+              onClick={() => setMode(isDark ? "light" : "dark")}
               aria-label="Toggle light and dark mode"
               sx={{
                 width: 34,
@@ -310,7 +250,7 @@ const AppShell = () => {
             <Button
               size="small"
               variant="contained"
-              onClick={appSignIn}
+              onClick={() => appSignIn()}
               sx={{ ml: 1, fontWeight: 700, borderRadius: "999px", px: 2.5 }}
             >
               Sign in

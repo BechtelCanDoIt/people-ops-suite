@@ -7,5 +7,6 @@ window.config = {
   AUTH_SIGN_IN_REDIRECT_URL: "http://localhost:3000",
   AUTH_SIGN_OUT_REDIRECT_URL: "http://localhost:3000",
   CAREERS_BACKEND_BASE_URL: "http://localhost:8080",
-  USE_MOCK_PROFILE: "false",
+  // The wso2.com careers page that the Jobs link opens.
+  CAREERS_SITE_URL: "https://wso2.com/careers#careers",
 };

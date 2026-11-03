@@ -24,7 +24,6 @@ const application = (overrides: Partial<Application> = {}): Application => ({
   id: "a1",
   jobId: "1",
   jobTitle: "Site Reliability Engineer",
-  department: "Engineering",
   appliedDate: "2026-09-01",
   status: ApplicationStatus.Applied,
   ...overrides,

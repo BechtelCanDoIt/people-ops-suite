@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { MapPin, Phone, Video } from "lucide-react";
+import { MapPin, Phone, Video } from "@wso2/oxygen-ui-icons-react";
 
 import type { Application, ApplicationInterview } from "@/types/types";
 import { BRAND_ORANGE, ON_ORANGE } from "@config/brand";
