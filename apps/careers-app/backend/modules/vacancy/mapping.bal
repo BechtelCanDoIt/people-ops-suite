@@ -73,7 +73,8 @@ isolated function interviewsOf(AtsInterview[] interviews) returns ApplicationInt
     select shown;
 
 // The status the web app shows for an application: the status of its offer when it has one, otherwise its ATS status.
-// An application that is hired but has no offer yet shows as an offer being prepared.
+// An application that is hired but has no offer yet still shows as an interview, because the candidate is told by the
+// offer itself and the app offers no answer to give before it is sent.
 isolated function applicationStatusOf(string atsStatus, string? offerStatus = ()) returns string {
     match offerStatus {
         OFFER_STATUS_OFFER_SENT => {
@@ -97,7 +98,7 @@ isolated function applicationStatusOf(string atsStatus, string? offerStatus = ()
             return "Interview";
         }
         "HIRED" => {
-            return "Offer";
+            return "Interview";
         }
         "REJECTED"|"NOT_SHORTLISTED" => {
             return "Rejected";
