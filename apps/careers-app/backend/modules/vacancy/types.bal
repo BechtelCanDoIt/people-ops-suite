@@ -25,6 +25,22 @@ public type AtsConfig record {|
 const CANDIDATE_STATUS_DELETED = "DELETED";
 const CANDIDATE_STATUS_HIRED = "HIRED";
 
+const OFFER_STATUS_OFFER_SENT = "OFFER_SENT";
+const OFFER_STATUS_ACCEPTED = "ACCEPTED";
+const OFFER_STATUS_DECLINED = "DECLINED";
+const OFFER_STATUS_EXPIRED = "EXPIRED";
+
+const MAX_DECLINE_FEEDBACK_LENGTH = 1000;
+
+# The reasons a candidate can pick for declining an offer.
+public const string[] OFFER_DECLINE_REASONS = [
+    "Accepted another offer",
+    "Compensation",
+    "Location or relocation",
+    "Personal reasons",
+    "Other"
+];
+
 const MAX_NAME_LENGTH = 100;
 const MAX_ADDRESS_LENGTH = 300;
 const MAX_UNIVERSITY_LENGTH = 255;
@@ -57,6 +73,12 @@ type AtsHistoryEntry record {
     string? university = ();
     string? createdOn = ();
     string? updatedOn = ();
+    # Status of the latest offer of the application, if it has one.
+    string? offerStatus = ();
+    # Expiry date of that offer as the offer letter states it, yyyy-MM-dd.
+    string? offerExpiryDate = ();
+    # Whole days left to answer that offer, 0 on its last day.
+    int? offerDaysLeft = ();
 };
 
 type AtsHistoryResponse record {
@@ -141,6 +163,21 @@ public type ApplicationSummary record {|
     # When the application last changed, which is when it reached its current status.
     string updatedDate;
     string status;
+    # The date the offer must be answered by, anywhere on Earth (yyyy-MM-dd). Set while the offer is open or after it
+    # expired.
+    string offerExpiresOn?;
+    # Whole days left to answer the offer, 0 on its last day. Set only while the offer is open.
+    int offerDaysLeft?;
+|};
+
+# A candidate's answer to an offer.
+public type OfferDecision record {|
+    # ACCEPTED or DECLINED
+    string decision;
+    # One of OFFER_DECLINE_REASONS, required for a decline
+    string declineReason?;
+    # Optional feedback for a decline
+    string declineReasonAdditional?;
 |};
 
 type TokenResponse record {

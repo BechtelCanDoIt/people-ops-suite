@@ -118,6 +118,55 @@ service http:InterceptableService / on new http:Listener(port, requestLimits = {
             "Failed to fetch the interviews", requestId);
     }
 
+    # The reasons a candidate can choose from when declining an offer.
+    resource function get offers/decline\-reasons() returns json => {reasons: vacancy:OFFER_DECLINE_REASONS};
+
+    # The signed-in candidate accepts or declines the offer of one of their own applications. The ATS records the answer
+    # and tells the offers team and HR.
+    resource function post applications/[string applicationId]/offer/decision(http:RequestContext ctx,
+            vacancy:OfferDecision answer)
+            returns json|http:Unauthorized|http:Forbidden|http:BadRequest|http:NotFound|http:Conflict|http:Gone
+                |http:BadGateway|http:GatewayTimeout {
+        string requestId = types:requestIdOf(ctx);
+        if !types:isValidNumericId(applicationId) {
+            return <http:NotFound>{body: {message: "Application not found"}};
+        }
+        jwt:CallerDetails|http:Unauthorized|http:Forbidden|http:BadGateway|http:GatewayTimeout caller =
+            callerOf(ctx, requestId);
+        if caller !is jwt:CallerDetails {
+            return caller;
+        }
+        string[] requestedDocuments = from documents:DocumentSpec document in documents:REQUIRED_DOCUMENTS
+            where document.required
+            select document.label;
+        http:Response|error resp = vacancy:answerOffer(caller.email, applicationId, answer, requestedDocuments, requestId);
+        if resp is error {
+            return candidateFailure(resp, "Failed to record your answer", requestId);
+        }
+        if resp.statusCode == http:STATUS_OK {
+            log:printInfo("Offer answered", outcome = answer.decision, applicationId = applicationId,
+                requestId = requestId);
+            return {status: answer.decision};
+        }
+        log:printWarn("The offer answer was not recorded", status = resp.statusCode, applicationId = applicationId,
+            requestId = requestId);
+        match resp.statusCode {
+            http:STATUS_BAD_REQUEST => {
+                return <http:BadRequest>{body: {message: "The answer was not accepted. Please check it and try again."}};
+            }
+            http:STATUS_NOT_FOUND => {
+                return <http:NotFound>{body: {message: "There is no offer to answer for this application."}};
+            }
+            http:STATUS_CONFLICT => {
+                return <http:Conflict>{body: {message: "This offer was already answered."}};
+            }
+            http:STATUS_GONE => {
+                return <http:Gone>{body: {message: "This offer has expired. Please contact HR."}};
+            }
+        }
+        return <http:BadGateway>{body: {message: "Failed to record your answer"}};
+    }
+
     # Whether the signed-in candidate has submitted the documents for one of their own accepted offers, whether they
     # can still change them and until when, and, when they have submitted, what they saved.
     resource function get applications/[string applicationId]/documents(http:RequestContext ctx)

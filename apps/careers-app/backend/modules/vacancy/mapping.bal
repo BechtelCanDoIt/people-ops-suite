@@ -72,8 +72,23 @@ isolated function interviewsOf(AtsInterview[] interviews) returns ApplicationInt
     order by shown.dateTime ascending
     select shown;
 
-// The status the web app shows for an ATS candidate status.
-isolated function applicationStatusOf(string atsStatus) returns string {
+// The status the web app shows for an application: the status of its offer when it has one, otherwise its ATS status.
+// An application that is hired but has no offer yet shows as an offer being prepared.
+isolated function applicationStatusOf(string atsStatus, string? offerStatus = ()) returns string {
+    match offerStatus {
+        OFFER_STATUS_OFFER_SENT => {
+            return "Offer";
+        }
+        OFFER_STATUS_ACCEPTED => {
+            return "Offer Accepted";
+        }
+        OFFER_STATUS_DECLINED => {
+            return "Offer Declined";
+        }
+        OFFER_STATUS_EXPIRED => {
+            return "Offer Expired";
+        }
+    }
     match atsStatus {
         "SHORTLISTED" => {
             return "Screening";
@@ -82,7 +97,7 @@ isolated function applicationStatusOf(string atsStatus) returns string {
             return "Interview";
         }
         "HIRED" => {
-            return "Offer Accepted";
+            return "Offer";
         }
         "REJECTED"|"NOT_SHORTLISTED" => {
             return "Rejected";
@@ -91,19 +106,56 @@ isolated function applicationStatusOf(string atsStatus) returns string {
     return "Applied";
 }
 
-// The candidate's applications, newest first, without the ones that were deleted.
-isolated function applicationsOf(AtsHistoryEntry[] history) returns ApplicationSummary[] =>
-    from AtsHistoryEntry entry in history
-    where entry.status != CANDIDATE_STATUS_DELETED
-    order by entry.id descending
-    select {
+// An application in the shape the web app reads. The offer deadline is passed on only while the offer is open or after
+// it expired.
+isolated function applicationOf(AtsHistoryEntry entry) returns ApplicationSummary {
+    ApplicationSummary summary = {
         id: entry.id.toString(),
         jobId: entry.vacancyId.toString(),
         jobTitle: entry.vacancyTitle ?: "",
         appliedDate: entry.createdOn ?: "",
         updatedDate: entry.updatedOn ?: entry.createdOn ?: "",
-        status: applicationStatusOf(entry.status)
+        status: applicationStatusOf(entry.status, entry.offerStatus)
     };
+    string? expiryDate = entry.offerExpiryDate;
+    if expiryDate is string && (entry.offerStatus == OFFER_STATUS_OFFER_SENT || entry.offerStatus == OFFER_STATUS_EXPIRED) {
+        summary.offerExpiresOn = expiryDate;
+    }
+    int? daysLeft = entry.offerDaysLeft;
+    if daysLeft is int && entry.offerStatus == OFFER_STATUS_OFFER_SENT {
+        summary.offerDaysLeft = daysLeft;
+    }
+    return summary;
+}
+
+// The candidate's applications, newest first, without the ones that were deleted.
+isolated function applicationsOf(AtsHistoryEntry[] history) returns ApplicationSummary[] =>
+    from AtsHistoryEntry entry in history
+    where entry.status != CANDIDATE_STATUS_DELETED
+    order by entry.id descending
+    select applicationOf(entry);
+
+// The reason the answer to an offer cannot be accepted, or nil when it can.
+isolated function offerDecisionProblem(OfferDecision answer) returns string? {
+    if answer.decision != OFFER_STATUS_ACCEPTED && answer.decision != OFFER_STATUS_DECLINED {
+        return "The decision must be ACCEPTED or DECLINED.";
+    }
+    if answer.decision == OFFER_STATUS_ACCEPTED {
+        return ();
+    }
+    string reason = (answer.declineReason ?: "").trim();
+    boolean listed = false;
+    foreach string allowed in OFFER_DECLINE_REASONS {
+        listed = listed || allowed == reason;
+    }
+    if !listed {
+        return "Choose one of the listed reasons for declining.";
+    }
+    if (answer.declineReasonAdditional ?: "").trim().length() > MAX_DECLINE_FEEDBACK_LENGTH {
+        return "The feedback is too long.";
+    }
+    return ();
+}
 
 // The candidate's most recent application that was not deleted.
 isolated function latestEntry(AtsHistoryEntry[] history) returns AtsHistoryEntry? {

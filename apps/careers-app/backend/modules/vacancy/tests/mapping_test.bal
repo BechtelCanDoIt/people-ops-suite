@@ -48,7 +48,7 @@ function atsStatusesAreShownAsTheWebAppNamesThem() {
     test:assertEquals(applicationStatusOf("SHORTLISTED"), "Screening");
     test:assertEquals(applicationStatusOf("INTERVIEW_IN_PROGRESS"), "Interview");
     test:assertEquals(applicationStatusOf("INTERVIEW_COMPLETED"), "Interview");
-    test:assertEquals(applicationStatusOf("HIRED"), "Offer Accepted");
+    test:assertEquals(applicationStatusOf("HIRED"), "Offer");
     test:assertEquals(applicationStatusOf("REJECTED"), "Rejected");
     test:assertEquals(applicationStatusOf("NOT_SHORTLISTED"), "Rejected");
     test:assertEquals(applicationStatusOf("VACANCY_CLOSED"), "Applied");
@@ -61,7 +61,7 @@ function applicationsAreNewestFirstWithoutDeletedOnes() {
     ApplicationSummary[] applications = applicationsOf(history);
     test:assertEquals(applications.length(), 2);
     test:assertEquals(applications[0].id, "2");
-    test:assertEquals(applications[0].status, "Offer Accepted");
+    test:assertEquals(applications[0].status, "Offer");
     test:assertEquals(applications[1].id, "1");
     test:assertEquals(applications[1].jobId, "7");
     test:assertEquals(applications[1].jobTitle, "Engineer");
@@ -258,4 +258,46 @@ function interviewsAreListedInTheOrderTheyTakePlace() {
         {id: 1, status: "COMPLETED", startTime: "2026-11-02T10:00:00"}
     ]);
     test:assertEquals(shown.map(interview => interview.id), ["1", "2"]);
+}
+
+@test:Config {}
+function anOfferStatusReplacesTheApplicationStatus() {
+    test:assertEquals(applicationStatusOf("HIRED", "OFFER_SENT"), "Offer");
+    test:assertEquals(applicationStatusOf("HIRED", "ACCEPTED"), "Offer Accepted");
+    test:assertEquals(applicationStatusOf("HIRED", "DECLINED"), "Offer Declined");
+    test:assertEquals(applicationStatusOf("HIRED", "EXPIRED"), "Offer Expired");
+    test:assertEquals(applicationStatusOf("REJECTED", ()), "Rejected");
+}
+
+function offeredEntry(string offerStatus, int daysLeft) returns AtsHistoryEntry {
+    AtsHistoryEntry entry = historyEntry(1, "HIRED");
+    entry.offerStatus = offerStatus;
+    entry.offerExpiryDate = "2026-11-12";
+    entry.offerDaysLeft = daysLeft;
+    return entry;
+}
+
+@test:Config {}
+function theOfferDeadlineIsShownOnlyWhileItMatters() {
+    ApplicationSummary open = applicationOf(offeredEntry("OFFER_SENT", 3));
+    test:assertEquals(open?.offerExpiresOn, "2026-11-12");
+    test:assertEquals(open?.offerDaysLeft, 3);
+
+    ApplicationSummary expired = applicationOf(offeredEntry("EXPIRED", 0));
+    test:assertEquals(expired?.offerExpiresOn, "2026-11-12");
+    test:assertEquals(expired?.offerDaysLeft, ());
+
+    ApplicationSummary accepted = applicationOf(offeredEntry("ACCEPTED", 3));
+    test:assertEquals(accepted?.offerExpiresOn, ());
+    test:assertEquals(accepted?.offerDaysLeft, ());
+}
+
+@test:Config {}
+function anOfferAnswerIsChecked() {
+    test:assertEquals(offerDecisionProblem({decision: "ACCEPTED"}), ());
+    test:assertEquals(offerDecisionProblem({decision: "MAYBE"}), "The decision must be ACCEPTED or DECLINED.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Compensation"}), ());
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED"}), "Choose one of the listed reasons for declining.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Bored"}),
+        "Choose one of the listed reasons for declining.");
 }

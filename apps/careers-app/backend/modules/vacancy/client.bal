@@ -129,6 +129,14 @@ isolated function patchWithToken(string path, AtsCandidateUpdate payload, string
     });
 }
 
+# POST to the ATS with automatic token refresh on 401.
+isolated function postWithToken(string path, json payload, string requestId) returns http:Response|error {
+    final readonly & json body = payload.cloneReadOnly();
+    return withToken(isolated function(string token) returns http:Response|error {
+        return atsHttpClient->post(path, body, authHeaders(token, requestId));
+    });
+}
+
 // The JSON of a 200 reply; any other status becomes an UpstreamError.
 isolated function atsJson(string path, string requestId) returns json|error {
     http:Response resp = check getWithToken(path, requestId);
@@ -200,7 +208,7 @@ public isolated function acceptedApplicantName(string email, string applicationI
     foreach AtsHistoryEntry entry in history {
         if entry.id == id {
             CandidateProfile? profile = profileOf(history, email);
-            if entry.status != CANDIDATE_STATUS_HIRED || profile is () {
+            if entry.offerStatus != OFFER_STATUS_ACCEPTED || profile is () {
                 return ();
             }
             return string:'join(" ", profile.firstName, profile.lastName).trim();
@@ -258,10 +266,39 @@ public isolated function isOfferAccepted(string email, string applicationId, str
     AtsHistoryEntry[] history = check candidateHistory(email, requestId);
     foreach AtsHistoryEntry entry in history {
         if entry.id == id {
-            return entry.status == CANDIDATE_STATUS_HIRED;
+            return entry.offerStatus == OFFER_STATUS_ACCEPTED;
         }
     }
     return false;
+}
+
+# Checks the answer and passes it to the ATS for one of the caller's own applications, found through their email. The
+# ATS reply is returned as it is, so its refusals can be told to the candidate.
+public isolated function answerOffer(string email, string applicationId, OfferDecision answer,
+        string[] requestedDocuments, string requestId) returns http:Response|error {
+    string? problem = offerDecisionProblem(answer);
+    if problem is string {
+        return failedReply(error UpstreamError(problem, status = http:STATUS_BAD_REQUEST), requestId);
+    }
+    int|error id = int:fromString(applicationId);
+    if id is error {
+        return failedReply(error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND), requestId);
+    }
+    AtsHistoryEntry[] history = check candidateHistory(email, requestId);
+    foreach AtsHistoryEntry entry in history {
+        if entry.id == id && entry.status != CANDIDATE_STATUS_DELETED {
+            boolean declined = answer.decision == OFFER_STATUS_DECLINED;
+            json body = {
+                candidateEmail: email,
+                decision: answer.decision,
+                declineReason: declined ? (answer.declineReason ?: "").trim() : (),
+                declineReasonAdditional: declined ? (answer.declineReasonAdditional ?: "").trim() : (),
+                requestedDocuments
+            };
+            return postWithToken(string `/candidates/${entry.id}/offer/decision`, body, requestId);
+        }
+    }
+    return failedReply(error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND), requestId);
 }
 
 isolated function saveProfile(string email, ProfileChanges changes, string requestId) returns CandidateProfile|error {
