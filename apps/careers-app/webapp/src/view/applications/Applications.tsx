@@ -20,7 +20,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
-  type ApplicationFeedback,
   type ApplicationInterview,
   type DocumentsStatus,
   type OfferAnswer,
@@ -30,7 +29,6 @@ import CenteredSpinner from "@component/common/CenteredSpinner";
 import PageContainer from "@component/common/PageContainer";
 import { CareersSiteUrl } from "@config/config";
 import {
-  APPLICATION_FEEDBACK_ENABLED,
   ApplicationStatus,
   OFFER_CONFLICT_ERROR,
   OFFER_EXPIRED_ERROR,
@@ -42,11 +40,9 @@ import {
   type LoadedMark,
   extrasVersionOf,
   isExtrasFresh,
-  dismissFeedback,
   refreshApplications,
   respondToOffer,
   retryApplications,
-  sendFeedback,
   setApplicationExtras,
 } from "@slices/careersSlice/careers";
 import { enqueueSnackbarMessage } from "@slices/commonSlice/common";
@@ -57,7 +53,6 @@ import AcceptOfferDialog from "@view/applications/components/AcceptOfferDialog";
 import ApplicationDetails from "@view/applications/components/ApplicationDetails";
 import ApplicationList from "@view/applications/components/ApplicationList";
 import DeclineOfferDialog from "@view/applications/components/DeclineOfferDialog";
-import RejectionFeedbackDialog from "@view/applications/components/RejectionFeedbackDialog";
 import WelcomeDialog from "@view/applications/components/WelcomeDialog";
 
 const NO_INTERVIEWS: ApplicationInterview[] = [];
@@ -76,28 +71,6 @@ const Applications = () => {
 
   const selectedApplication = applicationId ? applications.find((a) => a.id === applicationId) : undefined;
   const stillLoading = applicationsState === State.idle || applicationsState === State.loading;
-
-  const dismissedFeedbackIds = useAppSelector((state: RootState) => state.careers.dismissedFeedbackIds);
-  const [sendingFeedback, setSendingFeedback] = useState(false);
-  const feedbackDue =
-    APPLICATION_FEEDBACK_ENABLED &&
-    selectedApplication?.status === ApplicationStatus.Rejected &&
-    !selectedApplication.feedbackSubmitted &&
-    !dismissedFeedbackIds.includes(selectedApplication.id);
-
-  const handleSendFeedback = async (feedback: ApplicationFeedback) => {
-    if (!selectedApplication) return;
-    setSendingFeedback(true);
-    try {
-      const token = await getToken();
-      await dispatch(sendFeedback({ accessToken: token, applicationId: selectedApplication.id, feedback })).unwrap();
-      dispatch(enqueueSnackbarMessage({ message: SnackMessage.success.feedbackSent, type: "success" }));
-    } catch {
-      dispatch(enqueueSnackbarMessage({ message: SnackMessage.error.sendFeedback, type: "error" }));
-    } finally {
-      setSendingFeedback(false);
-    }
-  };
 
   // What was loaded for the opened application, kept in the store so the page shows it at once when opened again.
   const selectedId = selectedApplication?.id;
@@ -213,14 +186,6 @@ const Applications = () => {
           jobTitle={selectedApplication.jobTitle}
           onSubmitDocuments={() => navigate(`/applications/${selectedApplication.id}/documents`)}
           onClose={() => setOfferDialog(null)}
-        />
-      )}
-      {selectedApplication && feedbackDue && (
-        <RejectionFeedbackDialog
-          jobTitle={selectedApplication.jobTitle}
-          sending={sendingFeedback}
-          onSend={handleSendFeedback}
-          onClose={() => dispatch(dismissFeedback(selectedApplication.id))}
         />
       )}
       {applicationId ? (

@@ -18,7 +18,6 @@ import { PayloadAction, createAsyncThunk, createSlice, isRejected } from "@redux
 
 import {
   Application,
-  ApplicationFeedback,
   ApplicationInterview,
   CandidateProfile,
   DocumentsStatus,
@@ -33,7 +32,6 @@ import {
   respondToOffer as respondToOfferApi,
   saveProfile as saveProfileApi,
   SESSION_EXPIRED_ERROR,
-  submitFeedback as submitFeedbackApi,
 } from "@utils/profileService";
 
 // The fields of ApplicationExtras that are loaded from the backend.
@@ -80,8 +78,6 @@ interface CareersState {
   // The interviews and documents status of each opened application, by application id, kept so a page
   // that is opened again shows them at once.
   applicationExtras: Record<string, ApplicationExtras>;
-  // Applications whose feedback request the candidate dismissed.
-  dismissedFeedbackIds: string[];
   // True when the backend refused the access token.
   sessionExpired: boolean;
   // Counts the clears of the candidate's data.
@@ -110,7 +106,6 @@ const initialState: CareersState = {
   applications: [],
   applicationsState: State.idle,
   applicationExtras: {},
-  dismissedFeedbackIds: [],
   sessionExpired: false,
   sessionGeneration: 0,
 };
@@ -141,19 +136,6 @@ export const updateProfile = userRequest(
 
 export const loadApplications = userRequest("careers/loadApplications", (accessToken: string) =>
   fetchApplicationsApi(accessToken),
-);
-
-export const sendFeedback = userRequest(
-  "careers/sendFeedback",
-  ({
-    accessToken,
-    applicationId,
-    feedback,
-  }: {
-    accessToken: string;
-    applicationId: string;
-    feedback: ApplicationFeedback;
-  }) => submitFeedbackApi(accessToken, applicationId, feedback),
 );
 
 export const respondToOffer = userRequest(
@@ -199,10 +181,6 @@ const CareersSlice = createSlice({
     refreshApplications: (state) => {
       if (state.applicationsState === State.success) state.applicationsState = State.idle;
     },
-    // Remembers that the candidate dismissed the feedback request for an application.
-    dismissFeedback: (state, action: PayloadAction<string>) => {
-      if (!state.dismissedFeedbackIds.includes(action.payload)) state.dismissedFeedbackIds.push(action.payload);
-    },
     // Clears the signed-in candidate's data.
     clearUserData: (state) => {
       state.profile = emptyProfile;
@@ -210,7 +188,6 @@ const CareersSlice = createSlice({
       state.applications = [];
       state.applicationsState = State.idle;
       state.applicationExtras = {};
-      state.dismissedFeedbackIds = [];
       state.sessionExpired = false;
       state.sessionGeneration += 1;
     },
@@ -240,10 +217,6 @@ const CareersSlice = createSlice({
       .addCase(loadApplications.rejected, (state, action) => {
         if (!isStale(action.error)) state.applicationsState = State.failed;
       })
-      .addCase(sendFeedback.fulfilled, (state, action) => {
-        const application = state.applications.find((a) => a.id === action.meta.arg.applicationId);
-        if (application) application.feedbackSubmitted = true;
-      })
       .addCase(respondToOffer.fulfilled, (state, action) => {
         const application = state.applications.find((a) => a.id === action.meta.arg.applicationId);
         if (!application) return;
@@ -254,7 +227,7 @@ const CareersSlice = createSlice({
       })
       // A 401 on any signed-in request ends the session.
       .addMatcher(
-        isRejected(loadProfile, updateProfile, loadApplications, sendFeedback, respondToOffer),
+        isRejected(loadProfile, updateProfile, loadApplications, respondToOffer),
         (state, action) => {
           if (isSessionExpired(action.error)) state.sessionExpired = true;
         },
@@ -268,7 +241,6 @@ export const {
   applicationsFailed,
   retryApplications,
   refreshApplications,
-  dismissFeedback,
   clearUserData,
 } = CareersSlice.actions;
 

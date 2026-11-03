@@ -39,7 +39,6 @@ vi.mock("@utils/profileService", () => ({
   fetchProfile: vi.fn(),
   saveProfile: vi.fn(),
   fetchApplications: vi.fn(),
-  submitFeedback: vi.fn(),
   respondToOffer: vi.fn(),
 }));
 

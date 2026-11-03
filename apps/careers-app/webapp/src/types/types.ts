@@ -76,8 +76,6 @@ export interface Application {
   offerExpiresOn?: string;
   // The whole days left to answer an offer, 0 on its last day; only present while the offer is open.
   offerDaysLeft?: number;
-  // True once the candidate has sent feedback about this application.
-  feedbackSubmitted?: boolean;
   timeline?: ApplicationTimelineEvent[];
   // Only present when the list of applications carries the interviews.
   interviews?: ApplicationInterview[];
@@ -196,10 +194,4 @@ export interface DocumentRequirements {
   dependantRelationships: string[];
   maxDependants: number;
   maxEmergencyContacts: number;
-}
-
-// What a candidate tells us about their application experience.
-export interface ApplicationFeedback {
-  rating: number | null;
-  comment: string;
 }

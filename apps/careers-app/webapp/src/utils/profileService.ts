@@ -18,7 +18,6 @@ import axios, { type AxiosResponse } from "axios";
 
 import {
   Application,
-  ApplicationFeedback,
   ApplicationInterview,
   CandidateProfile,
   DocumentRequirements,
@@ -145,21 +144,6 @@ export async function saveProfile(
     axios.patch<CandidateProfile>(
       `${AppConfig.serviceUrls.candidates}/me`,
       changes,
-      requestOptions(token),
-    ),
-  );
-}
-
-// Sends the candidate's feedback about one of their applications.
-export async function submitFeedback(
-  accessToken: string,
-  applicationId: string,
-  feedback: ApplicationFeedback,
-): Promise<void> {
-  await sendRenewing(accessToken, (token) =>
-    axios.post(
-      `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/feedback`,
-      feedback,
       requestOptions(token),
     ),
   );
