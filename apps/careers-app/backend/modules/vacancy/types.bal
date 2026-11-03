@@ -69,8 +69,6 @@ type AtsHistoryEntry record {
     string? offerStatus = ();
     # Expiry date of that offer as the offer letter states it, yyyy-MM-dd.
     string? offerExpiryDate = ();
-    # Whole days left to answer that offer, 0 on its last day.
-    int? offerDaysLeft = ();
     # Subject of the email the offer was sent with.
     string? offerEmailSubject = ();
 };
@@ -160,8 +158,6 @@ public type ApplicationSummary record {|
     # The date the offer must be answered by, anywhere on Earth (yyyy-MM-dd). Set while the offer is open or after it
     # expired.
     string offerExpiresOn?;
-    # Whole days left to answer the offer, 0 on its last day. Set only while the offer is open.
-    int offerDaysLeft?;
     # The subject of the offer email, so the candidate can find it. Set only while the offer is open.
     string offerEmailSubject?;
 |};

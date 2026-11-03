@@ -269,30 +269,27 @@ function anOfferStatusReplacesTheApplicationStatus() {
     test:assertEquals(applicationStatusOf("REJECTED", ()), "Rejected");
 }
 
-function offeredEntry(string offerStatus, int daysLeft) returns AtsHistoryEntry {
+function offeredEntry(string offerStatus) returns AtsHistoryEntry {
     AtsHistoryEntry entry = historyEntry(1, "HIRED");
     entry.offerStatus = offerStatus;
     entry.offerExpiryDate = "2026-11-12";
-    entry.offerDaysLeft = daysLeft;
     entry.offerEmailSubject = "Offer letter";
     return entry;
 }
 
 @test:Config {}
 function theOfferDeadlineIsShownOnlyWhileItMatters() {
-    ApplicationSummary open = applicationOf(offeredEntry("OFFER_SENT", 3));
+    ApplicationSummary open = applicationOf(offeredEntry("OFFER_SENT"));
     test:assertEquals(open?.offerExpiresOn, "2026-11-12");
-    test:assertEquals(open?.offerDaysLeft, 3);
     test:assertEquals(open?.offerEmailSubject, "Offer letter");
 
-    ApplicationSummary expired = applicationOf(offeredEntry("EXPIRED", 0));
+    ApplicationSummary expired = applicationOf(offeredEntry("EXPIRED"));
     test:assertEquals(expired?.offerExpiresOn, "2026-11-12");
-    test:assertEquals(expired?.offerDaysLeft, ());
     test:assertEquals(expired?.offerEmailSubject, ());
 
-    ApplicationSummary accepted = applicationOf(offeredEntry("ACCEPTED", 3));
+    ApplicationSummary accepted = applicationOf(offeredEntry("ACCEPTED"));
     test:assertEquals(accepted?.offerExpiresOn, ());
-    test:assertEquals(accepted?.offerDaysLeft, ());
+    test:assertEquals(accepted?.offerExpiresOn, ());
 }
 
 @test:Config {}

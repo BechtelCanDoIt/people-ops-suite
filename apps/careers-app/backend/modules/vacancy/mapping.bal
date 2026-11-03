@@ -122,10 +122,6 @@ isolated function applicationOf(AtsHistoryEntry entry) returns ApplicationSummar
     if expiryDate is string && (entry.offerStatus == OFFER_STATUS_OFFER_SENT || entry.offerStatus == OFFER_STATUS_EXPIRED) {
         summary.offerExpiresOn = expiryDate;
     }
-    int? daysLeft = entry.offerDaysLeft;
-    if daysLeft is int && entry.offerStatus == OFFER_STATUS_OFFER_SENT {
-        summary.offerDaysLeft = daysLeft;
-    }
     string? emailSubject = entry.offerEmailSubject;
     if emailSubject is string && entry.offerStatus == OFFER_STATUS_OFFER_SENT {
         summary.offerEmailSubject = emailSubject;
