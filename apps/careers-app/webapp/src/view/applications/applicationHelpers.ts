@@ -30,6 +30,7 @@ const STAGE_INDEX: Partial<Record<ApplicationStatus, number>> = {
   [ApplicationStatus.Offer]: 3,
   [ApplicationStatus.OfferAccepted]: 3,
   [ApplicationStatus.OfferDeclined]: 3,
+  [ApplicationStatus.OfferExpired]: 3,
 };
 
 // Parses a date, or null when invalid; a date without a time is a local day.
@@ -75,6 +76,7 @@ const FINAL_STATUSES = [
   ApplicationStatus.Offer,
   ApplicationStatus.OfferAccepted,
   ApplicationStatus.OfferDeclined,
+  ApplicationStatus.OfferExpired,
   ApplicationStatus.Rejected,
 ];
 
@@ -110,21 +112,15 @@ export function historyOf(application: Application, interviews: ApplicationInter
 // Whether an offer is waiting for the candidate's answer.
 export const isOffer = (application: Application) => application.status === ApplicationStatus.Offer;
 
-const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-
-// The offer deadline with the days left.
-export function offerDeadlineOf(application: Application): { date: string; daysLeft: number } | null {
-  const end = application.offerExpiresOn ? parseDate(application.offerExpiresOn) : null;
-  if (!end) return null;
-  return {
-    date: formatDate(application.offerExpiresOn as string),
-    daysLeft: Math.round((startOfDay(end) - startOfDay(new Date())) / 86_400_000),
-  };
+// The offer deadline, with the days left while the offer is open. Both come from the backend, so the deadline is the
+// same as in the offer letter wherever the candidate is.
+export function offerDeadlineOf(application: Application): { date: string; daysLeft: number | null } | null {
+  if (!application.offerExpiresOn || !parseDate(application.offerExpiresOn)) return null;
+  return { date: formatDate(application.offerExpiresOn), daysLeft: application.offerDaysLeft ?? null };
 }
 
 // The days left to answer an offer, in words.
 export const daysLeftText = (daysLeft: number) => {
-  if (daysLeft < 0) return "expired";
   if (daysLeft === 0) return "last day to respond";
   return daysLeft === 1 ? "1 day left" : `${daysLeft} days left`;
 };
@@ -141,6 +137,7 @@ export const tabOf = (application: Application): ApplicationTab => {
     case ApplicationStatus.OfferAccepted:
       return "offers";
     case ApplicationStatus.OfferDeclined:
+    case ApplicationStatus.OfferExpired:
     case ApplicationStatus.Rejected:
       return "closed";
     default:
@@ -196,6 +193,8 @@ export function nextStepOf(application: Application, interviews: ApplicationInte
       return "You accepted the offer. The hiring team will contact you with the next steps.";
     case ApplicationStatus.OfferDeclined:
       return "You declined the offer";
+    case ApplicationStatus.OfferExpired:
+      return "The offer has expired. Please contact HR if you still want to join.";
     case ApplicationStatus.Rejected:
       return "Not selected for this position";
     default:

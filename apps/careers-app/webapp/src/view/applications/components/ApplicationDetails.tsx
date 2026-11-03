@@ -20,7 +20,7 @@ import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
 import Callout from "@component/common/Callout";
-import { ApplicationStatus, OFFER_RESPONSE_ENABLED } from "@config/constant";
+import { ApplicationStatus } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
   STAGES,
@@ -63,8 +63,7 @@ const ApplicationDetails = ({
   const actionNeeded = isOffer(application);
   // An upcoming interview is shown in orange.
   const interviewComing = upcomingInterviewOf(application, interviews) !== undefined;
-  const deadline = actionNeeded ? offerDeadlineOf(application) : null;
-  const offerExpired = deadline !== null && deadline.daysLeft < 0;
+  const deadline = offerDeadlineOf(application);
   const { activeStep, errorStep } = trackerOf(application);
 
   return (
@@ -133,17 +132,27 @@ const ApplicationDetails = ({
               find it.
             </Typography>
             {deadline && (
-              <Typography fontSize="0.9rem" fontWeight={700} color={offerExpired ? "error" : "text.primary"} mt={1}>
-                {offerExpired
-                  ? `This offer expired on ${deadline.date}. Please contact the recruitment team if you still want to join.`
-                  : `Please respond by ${deadline.date} (${daysLeftText(deadline.daysLeft)}).`}
+              <Typography fontSize="0.9rem" fontWeight={700} color="text.primary" mt={1}>
+                Please respond by {deadline.date} (anywhere on Earth)
+                {deadline.daysLeft !== null && ` - ${daysLeftText(deadline.daysLeft)}`}.
               </Typography>
             )}
           </Callout>
         )}
 
-        {OFFER_RESPONSE_ENABLED && isOffer(application) && !offerExpired && (
+        {isOffer(application) && (
           <OfferActions canAccept={canAcceptOffer} onAccept={onAcceptOffer} onDecline={onDeclineOffer} />
+        )}
+
+        {application.status === ApplicationStatus.OfferExpired && (
+          <Callout tone="danger" icon={<Info size={20} color="#DC2626" />} sx={{ mb: 3 }}>
+            <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
+              This offer expired{deadline ? ` on ${deadline.date}` : ""}.
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.primary">
+              Please contact HR if you still want to join.
+            </Typography>
+          </Callout>
         )}
 
         {application.status === ApplicationStatus.OfferAccepted && (

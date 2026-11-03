@@ -22,11 +22,11 @@ import { pillButtonSx } from "@utils/styles";
 
 const MAX_COMMENT_LENGTH = 1000;
 
+// The reasons the backend accepts for declining an offer.
 const DECLINE_REASONS = [
-  "I accepted another offer",
-  "The salary or benefits",
-  "The location or working arrangement",
-  "The role is not what I expected",
+  "Accepted another offer",
+  "Compensation",
+  "Location or relocation",
   "Personal reasons",
   "Other",
 ];

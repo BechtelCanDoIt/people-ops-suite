@@ -31,6 +31,7 @@ const statusConfig: Record<ApplicationStatus, { color: string }> = {
   [ApplicationStatus.Offer]: { color: "#10B981" },
   [ApplicationStatus.OfferAccepted]: { color: "#059669" },
   [ApplicationStatus.OfferDeclined]: { color: "#6B7280" },
+  [ApplicationStatus.OfferExpired]: { color: "#6B7280" },
   [ApplicationStatus.Rejected]: { color: "#EF4444" },
 };
 

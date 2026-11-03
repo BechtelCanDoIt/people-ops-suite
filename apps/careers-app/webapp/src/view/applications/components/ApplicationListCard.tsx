@@ -30,7 +30,7 @@ interface ApplicationListCardProps {
 const ApplicationListCard = ({ application, onView }: ApplicationListCardProps) => {
   const updated = application.updatedDate ?? (application.timeline ?? []).at(-1)?.date ?? application.appliedDate;
   const deadline = isOffer(application) ? offerDeadlineOf(application) : null;
-  const actionNeeded = isOffer(application) && (deadline === null || deadline.daysLeft >= 0);
+  const actionNeeded = isOffer(application);
 
   return (
     <Card
@@ -68,7 +68,7 @@ const ApplicationListCard = ({ application, onView }: ApplicationListCardProps) 
           <ApplicationStatusBadge status={application.status} />
           {actionNeeded && (
             <Typography fontSize="0.8rem" fontWeight={700} sx={{ color: "primary.main" }}>
-              Action needed{deadline ? ` · ${daysLeftText(deadline.daysLeft)}` : ""}
+              Action needed{deadline?.daysLeft != null ? ` · ${daysLeftText(deadline.daysLeft)}` : ""}
             </Typography>
           )}
         </Stack>

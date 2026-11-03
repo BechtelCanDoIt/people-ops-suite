@@ -167,18 +167,18 @@ export async function submitFeedback(
 
 const refused = (name: string, message: string) => Object.assign(new Error(message), { name });
 
-// Records the candidate's answer to an offer and returns the updated application; a 409 or a 410 becomes an error of
-// its own.
-export async function respondToOffer(
-  accessToken: string,
-  applicationId: string,
-  answer: OfferAnswer,
-): Promise<Application> {
+// Records the candidate's answer to an offer; a 409 or a 410 becomes an error of its own.
+export async function respondToOffer(accessToken: string, applicationId: string, answer: OfferAnswer): Promise<void> {
+  const accepted = answer.response === "accepted";
   try {
-    return await sendRenewing(accessToken, (token) =>
-      axios.post<Application>(
-        `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/offer-response`,
-        answer,
+    await sendRenewing(accessToken, (token) =>
+      axios.post(
+        `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/offer/decision`,
+        {
+          decision: accepted ? "ACCEPTED" : "DECLINED",
+          declineReason: accepted ? undefined : answer.reason,
+          declineReasonAdditional: accepted ? undefined : answer.comment || undefined,
+        },
         requestOptions(token),
       ),
     );

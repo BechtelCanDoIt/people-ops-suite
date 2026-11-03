@@ -26,6 +26,7 @@ import {
   OfferAnswer,
   State,
 } from "@/types/types";
+import { ApplicationStatus } from "@config/constant";
 import {
   fetchApplications as fetchApplicationsApi,
   fetchProfile as fetchProfileApi,
@@ -244,8 +245,12 @@ const CareersSlice = createSlice({
         if (application) application.feedbackSubmitted = true;
       })
       .addCase(respondToOffer.fulfilled, (state, action) => {
-        const index = state.applications.findIndex((a) => a.id === action.payload.id);
-        if (index >= 0) state.applications[index] = action.payload;
+        const application = state.applications.find((a) => a.id === action.meta.arg.applicationId);
+        if (!application) return;
+        application.status =
+          action.meta.arg.answer.response === "accepted" ? ApplicationStatus.OfferAccepted : ApplicationStatus.OfferDeclined;
+        delete application.offerExpiresOn;
+        delete application.offerDaysLeft;
       })
       // A 401 on any signed-in request ends the session.
       .addMatcher(

@@ -132,7 +132,7 @@ describe("requests that finish after the candidate's data is cleared", () => {
   });
 
   it("drops an offer answer that finishes after the data was cleared", async () => {
-    const request = deferred<Application>();
+    const request = deferred<void>();
     vi.mocked(api.respondToOffer).mockReturnValue(request.promise);
     const store = newStore();
 
@@ -140,7 +140,7 @@ describe("requests that finish after the candidate's data is cleared", () => {
       respondToOffer({ accessToken: "token", applicationId: "a1", answer: { response: "accepted" } }),
     );
     store.dispatch(clearUserData());
-    request.resolve({ ...previousApplication, status: ApplicationStatus.OfferAccepted });
+    request.resolve();
     await done;
 
     expect(store.getState().careers.applications).toEqual([]);

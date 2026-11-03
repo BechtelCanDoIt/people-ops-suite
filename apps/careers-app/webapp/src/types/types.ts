@@ -72,8 +72,10 @@ export interface Application {
   // When the application last changed, which is when it reached its current status.
   updatedDate?: string;
   status: ApplicationStatus;
-  // The last day the candidate can answer an offer.
+  // The last day the candidate can answer an offer, anywhere on Earth.
   offerExpiresOn?: string;
+  // The whole days left to answer an offer, 0 on its last day; only present while the offer is open.
+  offerDaysLeft?: number;
   // True once the candidate has sent feedback about this application.
   feedbackSubmitted?: boolean;
   timeline?: ApplicationTimelineEvent[];
