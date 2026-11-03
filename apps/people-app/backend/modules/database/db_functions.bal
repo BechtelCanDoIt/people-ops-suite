@@ -35,15 +35,6 @@ public isolated function getAllEmployeesBasicInfo() returns EmployeeDirectoryInf
         select employeeDirectoryInfo;
 }
 
-# Fetch the minimal directory listing for service clients (Active and Marked leaver).
-#
-# + return - Directory entries without HR fields, or error
-public isolated function getServiceDirectory() returns ServiceDirectoryInfo[]|error {
-    stream<ServiceDirectoryInfo, error?> serviceDirectoryStream = databaseClient->query(getServiceDirectoryQuery());
-    return from ServiceDirectoryInfo entry in serviceDirectoryStream
-        select entry;
-}
-
 # Get employee ID by EPF.
 #
 # + epf - Employee Provident Fund number

@@ -22,26 +22,6 @@ public type CustomJwtPayload record {
     string[] groups;
 };
 
-# Service-to-service callers and the routes each may call.
-#
-# A service calls through the gateway with OAuth2 client credentials, so its gateway JWT names the calling
-# application but carries no user `email` or `groups`. Such a token is admitted only when its client id is
-# listed in `clientRoutes`, and only for the routes listed against it.
-public type ServiceClientConfig record {|
-    # JWT claim holding the calling application's client id. Check a real gateway token for the claim name
-    # before relying on the default.
-    string clientIdClaim = "azp";
-    # JWT claim that says who the token was issued to. A user signing in through a listed app also carries
-    # that app's id, so the id alone doesn't make a caller a service: this claim must equal
-    # `applicationValue` too. Check a real client-credentials gateway token before relying on the default.
-    string applicationClaim = "aut";
-    # Value of `applicationClaim` on a token issued to an application rather than a person.
-    string applicationValue = "APPLICATION";
-    # Routes each client id may call, as `<METHOD> <path>`, e.g. `{"amplify-api-client": ["GET employees/basic-info"]}`.
-    # Empty = no service callers (the behaviour before this change).
-    map<string[]> clientRoutes = {};
-|};
-
 # Application specific role mapping.
 public type AppRoles record {|
     # Role for the employee

@@ -70,7 +70,6 @@ isolated function getAllEmployeesBasicInfoQuery() returns sql:ParameterizedQuery
         t.name AS team,
         st.name AS subTeam,
         u.name AS unit,
-        h.name AS house,
         et.name AS employmentType,
         c.name AS company,
         e.work_location AS workLocation,
@@ -83,28 +82,6 @@ isolated function getAllEmployeesBasicInfoQuery() returns sql:ParameterizedQuery
         INNER JOIN company c ON c.id = e.company_id
         LEFT JOIN sub_team st ON e.sub_team_id = st.id
         LEFT JOIN unit u ON e.unit_id = u.id
-        LEFT JOIN house h ON e.house_id = h.id AND h.is_active = 1
-    WHERE e.employee_status IN ('Active', 'Marked leaver');`;
-
-# Fetch the directory listing for service clients: identity, photo and where each person sits, nothing else.
-#
-# + return - Query to get the minimal directory listing
-isolated function getServiceDirectoryQuery() returns sql:ParameterizedQuery =>
-    `SELECT
-        e.employee_id AS employeeId,
-        e.first_name AS firstName,
-        e.last_name AS lastName,
-        e.work_email AS workEmail,
-        e.employee_thumbnail AS employeeThumbnail,
-        bu.name AS businessUnit,
-        t.name AS team,
-        st.name AS subTeam,
-        h.name AS house
-    FROM employee e
-        INNER JOIN business_unit bu ON e.business_unit_id = bu.id
-        INNER JOIN team t ON e.team_id = t.id
-        LEFT JOIN sub_team st ON e.sub_team_id = st.id
-        LEFT JOIN house h ON e.house_id = h.id AND h.is_active = 1
     WHERE e.employee_status IN ('Active', 'Marked leaver');`;
 
 # Fetch employee ID by primary key ID.
