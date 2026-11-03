@@ -76,6 +76,8 @@ export interface Application {
   offerExpiresOn?: string;
   // The whole days left to answer an offer, 0 on its last day; only present while the offer is open.
   offerDaysLeft?: number;
+  // The subject of the offer email, so the candidate can find it; only present while the offer is open.
+  offerEmailSubject?: string;
   timeline?: ApplicationTimelineEvent[];
   // Only present when the list of applications carries the interviews.
   interviews?: ApplicationInterview[];

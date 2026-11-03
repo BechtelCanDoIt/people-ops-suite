@@ -23,6 +23,7 @@ import {
   defaultTabOf,
   formatDate,
   historyOf,
+  nextStepOf,
   offerDeadlineOf,
   tabOf,
   trackerOf,
@@ -192,5 +193,18 @@ describe("tabOf", () => {
     [ApplicationStatus.Rejected, "closed"],
   ])("files %s under %s", (status, tab) => {
     expect(tabOf(application({ status }))).toBe(tab);
+  });
+});
+
+describe("nextStepOf for an open offer", () => {
+  it("names the email subject so the candidate can find the offer", () => {
+    const offer = application({ status: ApplicationStatus.Offer, offerEmailSubject: "Offer letter" });
+    expect(nextStepOf(offer, [])).toBe('Your offer was emailed to you with the subject "Offer letter".');
+  });
+
+  it("asks the candidate to check the inbox when the subject is not known", () => {
+    expect(nextStepOf(application({ status: ApplicationStatus.Offer }), [])).toBe(
+      "An offer has been sent to your email. Please check your inbox.",
+    );
   });
 });

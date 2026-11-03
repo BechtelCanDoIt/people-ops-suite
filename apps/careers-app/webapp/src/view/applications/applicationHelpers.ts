@@ -188,7 +188,9 @@ export function nextStepOf(application: Application, interviews: ApplicationInte
         : "Waiting for the interview outcome";
     }
     case ApplicationStatus.Offer:
-      return "An offer has been sent to your email. Please check your inbox.";
+      return application.offerEmailSubject
+        ? `Your offer was emailed to you with the subject "${application.offerEmailSubject}".`
+        : "An offer has been sent to your email. Please check your inbox.";
     case ApplicationStatus.OfferAccepted:
       return "You accepted the offer. The hiring team will contact you with the next steps.";
     case ApplicationStatus.OfferDeclined:

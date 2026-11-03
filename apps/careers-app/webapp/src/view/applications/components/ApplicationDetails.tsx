@@ -131,6 +131,11 @@ const ApplicationDetails = ({
               We have sent your offer to your email. Please check your inbox, and your spam folder if you can&apos;t
               find it.
             </Typography>
+            {application.offerEmailSubject && (
+              <Typography fontSize="0.9rem" color="text.primary" mt={0.5}>
+                Email subject: <strong>{application.offerEmailSubject}</strong>
+              </Typography>
+            )}
             {deadline && (
               <Typography fontSize="0.9rem" fontWeight={700} color="text.primary" mt={1}>
                 Please respond by {deadline.date} (anywhere on Earth)
