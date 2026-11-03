@@ -17,8 +17,6 @@
 # Authorization Constants.
 public const JWT_ASSERTION_HEADER = "x-jwt-assertion";
 public const HEADER_USER_INFO = "user-info";
-# Request-context key holding the client id of an allowed service caller (see `ServiceClientConfig`).
-public const HEADER_SERVICE_CLIENT = "service-client";
 
 # Privileges.
 public const ADMIN_PRIVILEGE = 999;
