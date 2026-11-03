@@ -74,8 +74,6 @@ export interface Application {
   status: ApplicationStatus;
   // The last day the candidate can answer an offer, anywhere on Earth.
   offerExpiresOn?: string;
-  // The whole days left to answer an offer, 0 on its last day; only present while the offer is open.
-  offerDaysLeft?: number;
   // The subject of the offer email, so the candidate can find it; only present while the offer is open.
   offerEmailSubject?: string;
   timeline?: ApplicationTimelineEvent[];

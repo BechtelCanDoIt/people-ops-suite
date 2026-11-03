@@ -24,7 +24,6 @@ import { ApplicationStatus } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
   STAGES,
-  daysLeftText,
   formatDate,
   historyOf,
   isOffer,
@@ -138,8 +137,7 @@ const ApplicationDetails = ({
             )}
             {deadline && (
               <Typography fontSize="0.9rem" fontWeight={700} color="text.primary" mt={1}>
-                Please respond by {deadline.date} (anywhere on Earth)
-                {deadline.daysLeft !== null && ` - ${daysLeftText(deadline.daysLeft)}`}.
+                Please respond by {deadline.date} (anywhere on Earth).
               </Typography>
             )}
           </Callout>

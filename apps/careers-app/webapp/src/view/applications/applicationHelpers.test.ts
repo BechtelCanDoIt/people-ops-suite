@@ -19,7 +19,6 @@ import { describe, expect, it } from "vitest";
 import type { Application, ApplicationInterview } from "@/types/types";
 import { ApplicationStatus } from "@config/constant";
 import {
-  daysLeftText,
   defaultTabOf,
   formatDate,
   historyOf,
@@ -38,22 +37,9 @@ const application = (overrides: Partial<Application> = {}): Application => ({
   ...overrides,
 });
 
-describe("offerDeadlineOf and daysLeftText", () => {
-  it("passes on the date and the days left from the backend", () => {
-    expect(offerDeadlineOf(application({ offerExpiresOn: "2026-10-26", offerDaysLeft: 7 }))?.daysLeft).toBe(7);
-    expect(offerDeadlineOf(application({ offerExpiresOn: "2026-10-26", offerDaysLeft: 7 }))?.date).toBe(
-      formatDate("2026-10-26"),
-    );
-  });
-
-  it("words the days left", () => {
-    expect(daysLeftText(0)).toBe("last day to respond");
-    expect(daysLeftText(1)).toBe("1 day left");
-    expect(daysLeftText(7)).toBe("7 days left");
-  });
-
-  it("has no days left once the offer is closed", () => {
-    expect(offerDeadlineOf(application({ offerExpiresOn: "2026-10-19" }))?.daysLeft).toBeNull();
+describe("offerDeadlineOf", () => {
+  it("passes on the date from the backend", () => {
+    expect(offerDeadlineOf(application({ offerExpiresOn: "2026-10-26" }))?.date).toBe(formatDate("2026-10-26"));
   });
 
   it("has no deadline when the application has none or it cannot be read", () => {

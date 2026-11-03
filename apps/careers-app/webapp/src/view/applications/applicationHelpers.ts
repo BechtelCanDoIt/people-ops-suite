@@ -112,18 +112,12 @@ export function historyOf(application: Application, interviews: ApplicationInter
 // Whether an offer is waiting for the candidate's answer.
 export const isOffer = (application: Application) => application.status === ApplicationStatus.Offer;
 
-// The offer deadline, with the days left while the offer is open. Both come from the backend, so the deadline is the
-// same as in the offer letter wherever the candidate is.
-export function offerDeadlineOf(application: Application): { date: string; daysLeft: number | null } | null {
+// The offer deadline. It comes from the backend, so it is the same date as in the offer letter wherever the candidate is.
+export function offerDeadlineOf(application: Application): { date: string } | null {
   if (!application.offerExpiresOn || !parseDate(application.offerExpiresOn)) return null;
-  return { date: formatDate(application.offerExpiresOn), daysLeft: application.offerDaysLeft ?? null };
+  return { date: formatDate(application.offerExpiresOn) };
 }
 
-// The days left to answer an offer, in words.
-export const daysLeftText = (daysLeft: number) => {
-  if (daysLeft === 0) return "last day to respond";
-  return daysLeft === 1 ? "1 day left" : `${daysLeft} days left`;
-};
 
 type ApplicationTab = "active" | "offers" | "closed";
 

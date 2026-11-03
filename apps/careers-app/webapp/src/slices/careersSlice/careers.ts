@@ -223,7 +223,7 @@ const CareersSlice = createSlice({
         application.status =
           action.meta.arg.answer.response === "accepted" ? ApplicationStatus.OfferAccepted : ApplicationStatus.OfferDeclined;
         delete application.offerExpiresOn;
-        delete application.offerDaysLeft;
+        delete application.offerEmailSubject;
       })
       // A 401 on any signed-in request ends the session.
       .addMatcher(

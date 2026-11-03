@@ -19,7 +19,7 @@ import { ArrowRight } from "@wso2/oxygen-ui-icons-react";
 
 import type { Application } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
-import { daysLeftText, isOffer, offerDeadlineOf, timeAgo } from "@view/applications/applicationHelpers";
+import { isOffer, offerDeadlineOf, timeAgo } from "@view/applications/applicationHelpers";
 
 interface ApplicationListCardProps {
   application: Application;
@@ -68,7 +68,7 @@ const ApplicationListCard = ({ application, onView }: ApplicationListCardProps) 
           <ApplicationStatusBadge status={application.status} />
           {actionNeeded && (
             <Typography fontSize="0.8rem" fontWeight={700} sx={{ color: "primary.main" }}>
-              Action needed{deadline?.daysLeft != null ? ` · ${daysLeftText(deadline.daysLeft)}` : ""}
+              Action needed{deadline ? ` · respond by ${deadline.date}` : ""}
             </Typography>
           )}
         </Stack>
