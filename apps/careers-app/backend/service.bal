@@ -22,8 +22,10 @@ import wso2/careers_app.vacancy;
 import ballerina/http;
 import ballerina/log;
 
-configurable string[] allowedOrigins = ?;
-configurable int port = ?;
+# Origins of a locally running web app allowed to call this service from the browser. Leave it empty when deployed.
+configurable string[] devAllowedOrigins = [];
+# The listener port. Deployed services use the default; change it locally when 9090 is taken.
+configurable int port = 9090;
 
 # Whether the request declares a body larger than the limit. The listener's own limit still applies to a request
 # that does not declare its length.
@@ -36,23 +38,20 @@ isolated function exceeds(http:Request req, int maxBytes) returns boolean {
     return false;
 }
 
-@http:ServiceConfig {
-    cors: {
-        allowOrigins: allowedOrigins,
-        allowMethods: [http:GET, http:POST, http:PUT, http:OPTIONS, http:PATCH],
-        allowHeaders: [http:CONTENT_TYPE, http:AUTH_HEADER, types:REQUEST_ID_HEADER],
-        allowCredentials: false,
-        maxAge: 84900
-    }
-}
 service http:InterceptableService / on new http:Listener(port, requestLimits = {maxEntityBodySize: documents:MAX_REQUEST_BYTES}) {
 
     function init() {
         log:printInfo("Careers App backend started...");
     }
 
-    public function createInterceptors() returns http:Interceptor[] =>
-        [new types:RequestIdInterceptor(), new jwt:JwtInterceptor(), new jwt:NoStoreInterceptor()];
+    public function createInterceptors() returns http:Interceptor[] {
+        http:Interceptor[] interceptors = [new types:RequestIdInterceptor()];
+        if devAllowedOrigins.length() > 0 {
+            interceptors.push(new types:DevCorsRequestInterceptor(devAllowedOrigins), new types:DevCorsResponseInterceptor());
+        }
+        interceptors.push(new jwt:JwtInterceptor(), new jwt:NoStoreInterceptor());
+        return interceptors;
+    }
 
     # The signed-in candidate's details, taken from their most recent application.
     resource function get candidates/me(http:RequestContext ctx)

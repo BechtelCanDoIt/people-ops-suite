@@ -1,6 +1,5 @@
 # Dummy values for the tests only: nothing here is a real endpoint or credential.
 [careers_app]
-allowedOrigins = ["http://localhost:5173"]
 port = 9099
 
 [careers_app.vacancy.atsConfig]

@@ -1,6 +1,4 @@
 [careers_app]
-allowedOrigins = [""]
-port = 8080
 
 [careers_app.vacancy.atsConfig]
 baseUrl = ""
