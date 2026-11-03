@@ -19,7 +19,7 @@ import wso2/careers_app.jwt;
 import ballerina/http;
 import ballerina/test;
 
-final http:Client testClient = check new (string `http://localhost:${port}`);
+final http:Client testClient = check new ("http://localhost:9090");
 
 @test:Config {}
 function aDeclaredBodySizeIsComparedWithTheLimit() {
