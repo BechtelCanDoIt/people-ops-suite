@@ -33,6 +33,8 @@ import {
   DOCUMENTS_SUBMISSION_ENABLED,
   OFFER_CONFLICT_ERROR,
   OFFER_EXPIRED_ERROR,
+  OFFER_INVALID_ERROR,
+  OFFER_NOT_FOUND_ERROR,
   SnackMessage,
 } from "@config/constant";
 import { useAppAuthContext } from "@context/AuthContext";
@@ -135,29 +137,57 @@ const Applications = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, hasAcceptedOffer, getToken, generation, documentsStatusAttempt, version]);
 
-  const [offerDialog, setOfferDialog] = useState<"accept" | "decline" | "welcome" | null>(null);
+  // An offer can run out while the tab stays open, so the applications are loaded again when the candidate comes back to
+  // the tab and an offer is still open.
+  const hasOpenOffer = applications.some((a) => a.status === ApplicationStatus.Offer);
+  useEffect(() => {
+    if (!hasOpenOffer) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") dispatch(refreshApplications());
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [hasOpenOffer, dispatch]);
+
+  // A dialog belongs to the application it was opened for, so it never follows the candidate to another one.
+  const [offerDialog, setOfferDialog] = useState<{
+    kind: "accept" | "decline" | "welcome";
+    applicationId: string;
+  } | null>(null);
+  const dialogKind = offerDialog && offerDialog.applicationId === selectedApplication?.id ? offerDialog.kind : null;
   const [respondingToOffer, setRespondingToOffer] = useState(false);
 
   const handleOfferAnswer = async (answer: OfferAnswer) => {
     if (!selectedApplication) return;
+    const answeredId = selectedApplication.id;
     setRespondingToOffer(true);
     try {
       const token = await getToken();
-      await dispatch(respondToOffer({ accessToken: token, applicationId: selectedApplication.id, answer })).unwrap();
+      await dispatch(respondToOffer({ accessToken: token, applicationId: answeredId, answer })).unwrap();
+      // The status, the dates and the deadline come from the backend, so the applications are loaded again.
+      dispatch(refreshApplications());
       if (answer.response === "accepted") {
-        setOfferDialog("welcome");
+        setOfferDialog({ kind: "welcome", applicationId: answeredId });
       } else {
         setOfferDialog(null);
         dispatch(enqueueSnackbarMessage({ message: SnackMessage.success.offerDeclined, type: "success" }));
       }
     } catch (error) {
       const name = (error as { name?: string }).name;
-      if (name === OFFER_CONFLICT_ERROR || name === OFFER_EXPIRED_ERROR) {
+      if (name === OFFER_CONFLICT_ERROR || name === OFFER_EXPIRED_ERROR || name === OFFER_NOT_FOUND_ERROR) {
         // Closes the dialog and loads the real state.
         setOfferDialog(null);
         dispatch(refreshApplications());
-        const message = name === OFFER_EXPIRED_ERROR ? SnackMessage.error.offerExpired : SnackMessage.error.offerConflict;
+        const message =
+          name === OFFER_EXPIRED_ERROR
+            ? SnackMessage.error.offerExpired
+            : name === OFFER_NOT_FOUND_ERROR
+              ? SnackMessage.error.offerNotFound
+              : SnackMessage.error.offerConflict;
         dispatch(enqueueSnackbarMessage({ message, type: "error" }));
+      } else if (name === OFFER_INVALID_ERROR) {
+        // The dialog stays open, and the message says what to correct.
+        dispatch(enqueueSnackbarMessage({ message: (error as Error).message, type: "error" }));
       } else {
         dispatch(enqueueSnackbarMessage({ message: SnackMessage.error.respondToOffer, type: "error" }));
       }
@@ -168,7 +198,7 @@ const Applications = () => {
 
   return (
     <PageContainer>
-      {selectedApplication && offerDialog === "accept" && (
+      {selectedApplication && dialogKind === "accept" && (
         <AcceptOfferDialog
           jobTitle={selectedApplication.jobTitle}
           sending={respondingToOffer}
@@ -176,7 +206,7 @@ const Applications = () => {
           onClose={() => setOfferDialog(null)}
         />
       )}
-      {selectedApplication && offerDialog === "decline" && (
+      {selectedApplication && dialogKind === "decline" && (
         <DeclineOfferDialog
           jobTitle={selectedApplication.jobTitle}
           sending={respondingToOffer}
@@ -184,7 +214,7 @@ const Applications = () => {
           onClose={() => setOfferDialog(null)}
         />
       )}
-      {selectedApplication && offerDialog === "welcome" && (
+      {selectedApplication && dialogKind === "welcome" && (
         <WelcomeDialog
           jobTitle={selectedApplication.jobTitle}
           onSubmitDocuments={
@@ -208,8 +238,8 @@ const Applications = () => {
             <ApplicationDetails
               application={selectedApplication}
               canAcceptOffer={!applications.some((a) => a.status === ApplicationStatus.OfferAccepted)}
-              onAcceptOffer={() => setOfferDialog("accept")}
-              onDeclineOffer={() => setOfferDialog("decline")}
+              onAcceptOffer={() => setOfferDialog({ kind: "accept", applicationId: selectedApplication.id })}
+              onDeclineOffer={() => setOfferDialog({ kind: "decline", applicationId: selectedApplication.id })}
               onSubmitDocuments={() => navigate(`/applications/${selectedApplication.id}/documents`)}
               interviews={interviews}
               documentsStatus={documentsStatus}

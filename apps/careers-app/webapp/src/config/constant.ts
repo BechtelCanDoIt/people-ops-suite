@@ -28,6 +28,7 @@ export const SnackMessage = {
     respondToOffer: "Unable to record your response to the offer. Please try again.",
     offerConflict: "This offer was already answered, or you have already accepted another offer.",
     offerExpired: "This offer has expired. Please contact the recruitment team if you still want to join.",
+    offerNotFound: "This offer is no longer available. Please contact the recruitment team.",
     fetchDocumentRequirements: "Unable to load the list of documents. Please try again.",
     submitDocuments: "Unable to submit your documents. Please try again.",
     sessionEndedOnSubmit: "Your session has ended. Please sign in again to submit your documents.",
@@ -42,6 +43,8 @@ export const SnackMessage = {
 // The names of the errors raised when the backend refuses an offer answer.
 export const OFFER_CONFLICT_ERROR = "OfferConflictError";
 export const OFFER_EXPIRED_ERROR = "OfferExpiredError";
+export const OFFER_NOT_FOUND_ERROR = "OfferNotFoundError";
+export const OFFER_INVALID_ERROR = "OfferInvalidError";
 
 // The first phase stops once a candidate has accepted or declined an offer, so the onboarding documents step is hidden.
 // Turn it on, together with the backend setting documentsEnabled, when that step opens.

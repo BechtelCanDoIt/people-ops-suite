@@ -81,12 +81,8 @@ export interface Application {
   interviews?: ApplicationInterview[];
 }
 
-// A candidate's answer to an offer; a declined offer carries the reason.
-export interface OfferAnswer {
-  response: "accepted" | "declined";
-  reason?: string;
-  comment?: string;
-}
+// A candidate's answer to an offer; a decline always carries its reason, and may carry more feedback.
+export type OfferAnswer = { response: "accepted" } | { response: "declined"; reason: string; comment?: string };
 
 // The personal details a new joiner fills in after accepting an offer.
 export interface PersonalDetails {

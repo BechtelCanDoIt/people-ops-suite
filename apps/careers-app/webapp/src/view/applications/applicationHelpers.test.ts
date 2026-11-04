@@ -213,3 +213,21 @@ describe("nextStepOf for a selected candidate", () => {
     );
   });
 });
+
+describe("an expired offer", () => {
+  it("is marked as an error on the Offer step", () => {
+    expect(trackerOf(application({ status: ApplicationStatus.OfferExpired }))).toEqual({
+      activeStep: 4,
+      errorStep: 4,
+    });
+  });
+
+  it("is dated by its deadline in the history", () => {
+    const expired = application({
+      status: ApplicationStatus.OfferExpired,
+      offerExpiresOn: "2026-11-12",
+      updatedDate: "2026-11-14 02:00:00",
+    });
+    expect(historyOf(expired, []).at(-1)).toEqual({ label: "Offer Expired", date: "2026-11-12", detail: "Current" });
+  });
+});

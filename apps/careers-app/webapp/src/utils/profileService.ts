@@ -27,7 +27,12 @@ import {
   PersonalDetails,
 } from "@/types/types";
 import { AppConfig } from "@config/config";
-import { OFFER_CONFLICT_ERROR, OFFER_EXPIRED_ERROR } from "@config/constant";
+import {
+  OFFER_CONFLICT_ERROR,
+  OFFER_EXPIRED_ERROR,
+  OFFER_INVALID_ERROR,
+  OFFER_NOT_FOUND_ERROR,
+} from "@config/constant";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -151,23 +156,28 @@ export async function saveProfile(
 
 const refused = (name: string, message: string) => Object.assign(new Error(message), { name });
 
-// Records the candidate's answer to an offer; a 409 or a 410 becomes an error of its own.
+// Records the candidate's answer to an offer. A 400 (with the reason the backend gives), a 404, a 409 and a 410 each
+// become an error of their own.
 export async function respondToOffer(accessToken: string, applicationId: string, answer: OfferAnswer): Promise<void> {
-  const accepted = answer.response === "accepted";
+  const body =
+    answer.response === "accepted"
+      ? { decision: "ACCEPTED" }
+      : { decision: "DECLINED", declineReason: answer.reason, declineReasonAdditional: answer.comment || undefined };
   try {
     await sendRenewing(accessToken, (token) =>
       axios.post(
         `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/offer/decision`,
-        {
-          decision: accepted ? "ACCEPTED" : "DECLINED",
-          declineReason: accepted ? undefined : answer.reason,
-          declineReasonAdditional: accepted ? undefined : answer.comment || undefined,
-        },
+        body,
         requestOptions(token),
       ),
     );
   } catch (error) {
     const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    if (status === 400) {
+      const reason = axios.isAxiosError(error) ? (error.response?.data as { message?: unknown })?.message : undefined;
+      throw refused(OFFER_INVALID_ERROR, typeof reason === "string" && reason ? reason : "The answer was not accepted.");
+    }
+    if (status === 404) throw refused(OFFER_NOT_FOUND_ERROR, "There is no offer to answer.");
     if (status === 409) throw refused(OFFER_CONFLICT_ERROR, "The offer cannot be answered.");
     if (status === 410) throw refused(OFFER_EXPIRED_ERROR, "The offer has expired.");
     throw error;

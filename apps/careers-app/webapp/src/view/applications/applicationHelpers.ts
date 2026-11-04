@@ -56,6 +56,11 @@ export const formatDateTime = (value: string) =>
 
 // The tracker's active step, and the step to mark as an error for a rejected application.
 export function trackerOf(application: Application): { activeStep: number; errorStep: number | null } {
+  // An offer that ran out is marked as an error on the Offer step, as a rejection is on the step it stopped at.
+  if (application.status === ApplicationStatus.OfferExpired) {
+    const offerStep = STAGE_INDEX[ApplicationStatus.OfferExpired] ?? 0;
+    return { activeStep: offerStep, errorStep: offerStep };
+  }
   if (application.status === ApplicationStatus.Rejected) {
     const reached = Math.max(0, ...(application.timeline ?? []).map((event) => STAGE_INDEX[event.stage] ?? 0));
     return { activeStep: reached, errorStep: reached };
@@ -106,7 +111,12 @@ export function historyOf(application: Application, interviews: ApplicationInter
       }),
     );
   if (FINAL_STATUSES.includes(status)) {
-    entries.push({ label: status, date: application.updatedDate ?? null, detail: "Current" });
+    // An expired offer is dated by its deadline, which is when it ran out.
+    const date =
+      status === ApplicationStatus.OfferExpired
+        ? (application.offerExpiresOn ?? application.updatedDate)
+        : application.updatedDate;
+    entries.push({ label: status, date: date ?? null, detail: "Current" });
   }
   return entries;
 }
@@ -119,7 +129,6 @@ export function offerDeadlineOf(application: Application): { date: string } | nu
   if (!application.offerExpiresOn || !parseDate(application.offerExpiresOn)) return null;
   return { date: formatDate(application.offerExpiresOn) };
 }
-
 
 type ApplicationTab = "active" | "offers" | "closed";
 
