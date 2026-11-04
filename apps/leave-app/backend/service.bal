@@ -534,7 +534,8 @@ service http:InterceptableService / on new http:Listener(9090,
                     };
                 }
 
-                string? leadMail = employeeDetails.leadEmail;
+                // HR can send an empty lead, which counts as none.
+                string? leadMail = nonBlankEmail(employeeDetails.leadEmail);
                 if leadMail is () {
                     string errMsg = "A reporting lead is required to apply for sabbatical leave.";
                     log:printWarn(errMsg);
@@ -1472,6 +1473,13 @@ service http:InterceptableService / on new http:Listener(9090,
                                                                   approverEmail: email,
                                                                   leaveId: id
                                                               });
+        if approvalResult is database:LeaveNotPendingError {
+            return <http:BadRequest>{
+                body: {
+                    message: approvalResult.message()
+                }
+            };
+        }
         if approvalResult is error {
             log:printError("Failed to process sabbatical leave approval notification", approvalResult);
             return <http:InternalServerError>{
