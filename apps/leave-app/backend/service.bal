@@ -1002,16 +1002,14 @@ service http:InterceptableService / on new http:Listener(9090,
                     jwt
             );
             if cancelledLeaveDetails.leaveType == database:SABBATICAL_LEAVE {
-                string? approverEmail = nonBlankEmail(cancelledLeaveDetails.approverEmail);
-                // A sabbatical applied for before the lead was saved as its approver has none until it is decided,
-                // so its lead is looked up instead.
-                if approverEmail is () {
-                    employee:Employee & readonly|error applicant = employee:getEmployee(cancelledLeaveDetails.email);
-                    if applicant is error {
-                        log:printWarn("Could not look up the lead of a sabbatical applicant", applicant, leaveId = id);
-                    }
-                    approverEmail = applicant is error ? () : nonBlankEmail(applicant.leadEmail);
+                // The applicant's current lead is told, as the lead may have changed since the request was made or
+                // decided. The saved approver is used when HR has no lead, as for an Other Authorized withdrawal.
+                employee:Employee & readonly|error applicant = employee:getEmployee(cancelledLeaveDetails.email);
+                if applicant is error {
+                    log:printWarn("Could not look up the lead of a sabbatical applicant", applicant, leaveId = id);
                 }
+                string? hrLeadEmail = applicant is error ? () : nonBlankEmail(applicant.leadEmail);
+                string? approverEmail = hrLeadEmail ?: nonBlankEmail(cancelledLeaveDetails.approverEmail);
                 if approverEmail is () {
                     log:printWarn("Sabbatical cancelled with no known lead, so the lead is not notified", leaveId = id);
                 }
