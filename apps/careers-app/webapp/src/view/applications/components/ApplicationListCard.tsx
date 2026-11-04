@@ -29,8 +29,8 @@ interface ApplicationListCardProps {
 // One application in the list.
 const ApplicationListCard = ({ application, onView }: ApplicationListCardProps) => {
   const updated = application.updatedDate ?? (application.timeline ?? []).at(-1)?.date ?? application.appliedDate;
-  const deadline = isOffer(application) ? offerDeadlineOf(application) : null;
   const actionNeeded = isOffer(application);
+  const deadline = actionNeeded ? offerDeadlineOf(application) : null;
 
   return (
     <Card

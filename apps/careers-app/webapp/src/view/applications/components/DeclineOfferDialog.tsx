@@ -22,7 +22,7 @@ import { pillButtonSx } from "@utils/styles";
 
 const MAX_COMMENT_LENGTH = 1000;
 
-// The reasons the backend accepts for declining an offer.
+// The reasons offered in the dialog. The backend only requires a non-empty reason, so this list is not enforced there.
 const DECLINE_REASONS = [
   "Accepted another offer",
   "Compensation",

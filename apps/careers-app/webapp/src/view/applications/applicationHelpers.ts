@@ -126,8 +126,9 @@ export const isOffer = (application: Application) => application.status === Appl
 
 // The offer deadline. It comes from the backend, so it is the same date as in the offer letter wherever the candidate is.
 export function offerDeadlineOf(application: Application): { date: string } | null {
-  if (!application.offerExpiresOn || !parseDate(application.offerExpiresOn)) return null;
-  return { date: formatDate(application.offerExpiresOn) };
+  if (!application.offerExpiresOn) return null;
+  const date = formatDate(application.offerExpiresOn);
+  return date === "-" ? null : { date };
 }
 
 type ApplicationTab = "active" | "offers" | "closed";

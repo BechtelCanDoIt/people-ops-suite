@@ -14,13 +14,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Application, ApplicationInterview } from "@/types/types";
 import { ApplicationStatus } from "@config/constant";
 import {
   defaultTabOf,
-  formatDate,
   historyOf,
   nextStepOf,
   offerDeadlineOf,
@@ -38,8 +37,16 @@ const application = (overrides: Partial<Application> = {}): Application => ({
 });
 
 describe("offerDeadlineOf", () => {
-  it("passes on the date from the backend", () => {
-    expect(offerDeadlineOf(application({ offerExpiresOn: "2026-10-26" }))?.date).toBe(formatDate("2026-10-26"));
+  it("shows a date-only deadline on its own day, whatever the time zone", () => {
+    // West of UTC, a date read as UTC midnight would fall on the day before.
+    vi.stubEnv("TZ", "America/Los_Angeles");
+    try {
+      const shown = offerDeadlineOf(application({ offerExpiresOn: "2026-10-26" }))?.date ?? "";
+      expect(shown).toMatch(/\b26\b/);
+      expect(shown).toContain("2026");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("has no deadline when the application has none or it cannot be read", () => {

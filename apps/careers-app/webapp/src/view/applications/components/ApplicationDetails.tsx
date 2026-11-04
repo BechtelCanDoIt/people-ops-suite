@@ -13,8 +13,18 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
-import { Box, Button, Card, CardContent, Skeleton, Stack, Step, StepLabel, Stepper, Typography } from "@wso2/oxygen-ui";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Skeleton,
+  Stack,
+  Step,
+  StepLabel,
+  Stepper,
+  Typography,
+} from "@wso2/oxygen-ui";
 import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 
 import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
@@ -68,11 +78,22 @@ const ApplicationDetails = ({
   return (
     <Card elevation={0} sx={cardSx}>
       <Box sx={{ p: 3 }}>
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={1.5}>
+        <Stack
+          direction="row"
+          alignItems="flex-start"
+          justifyContent="space-between"
+          flexWrap="wrap"
+          gap={1.5}
+        >
           <Box sx={{ minWidth: 0 }}>
             <Typography
               component="h1"
-              sx={{ fontSize: { xs: "1.5rem", md: "1.9rem" }, lineHeight: 1.3, fontWeight: 400, color: "text.primary" }}
+              sx={{
+                fontSize: { xs: "1.5rem", md: "1.9rem" },
+                lineHeight: 1.3,
+                fontWeight: 400,
+                color: "text.primary",
+              }}
             >
               {application.jobTitle}
             </Typography>
@@ -91,7 +112,10 @@ const ApplicationDetails = ({
             // uses the colour name, so it follows the theme, in the dark one as well.
             color:
               actionNeeded || interviewComing
-                ? (theme) => (theme.palette.mode === "dark" ? theme.palette.primary.main : theme.palette.primary.dark)
+                ? (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.primary.main
+                      : theme.palette.primary.dark
                 : "text.secondary",
           }}
         >
@@ -106,7 +130,9 @@ const ApplicationDetails = ({
           sx={{
             mb: 3,
             "& .MuiStepIcon-root": { color: "divider" },
-            "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": { color: "primary.main" },
+            "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": {
+              color: "primary.main",
+            },
             "& .MuiStepIcon-root.Mui-error": { color: "#EF4444" },
             "& .MuiStepLabel-label": { fontSize: "0.85rem" },
             "& .MuiStepConnector-root.Mui-active .MuiStepConnector-line, & .MuiStepConnector-root.Mui-completed .MuiStepConnector-line":
@@ -126,36 +152,39 @@ const ApplicationDetails = ({
               Congratulations, you have been selected.
             </Typography>
             <Typography fontSize="0.9rem" color="text.primary">
-              The hiring team will email you your offer letter. Please check your inbox, and your spam folder if you
-              can&apos;t find it.
+              The hiring team will email you your offer letter. Please check your inbox, and your
+              spam folder if you can&apos;t find it.
             </Typography>
           </Callout>
         )}
 
-        {isOffer(application) && (
-          <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
-            <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
-              Congratulations, you have been selected.
-            </Typography>
-            <Typography fontSize="0.9rem" color="text.primary">
-              We have sent you the offer letter by email
-              {application.offerEmailSubject && (
-                <>
-                  , with the subject <strong>&quot;{application.offerEmailSubject}&quot;</strong>
-                </>
-              )}
-              . If you can&apos;t find it, please check your spam folder.
-            </Typography>
-            {deadline && (
-              <Typography fontSize="0.9rem" fontWeight={700} color="text.primary" mt={1}>
-                Please respond by {deadline.date} (anywhere on Earth).
+        {actionNeeded && (
+          <>
+            <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
+              <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
+                Congratulations, you have been selected.
               </Typography>
-            )}
-          </Callout>
-        )}
-
-        {isOffer(application) && (
-          <OfferActions canAccept={canAcceptOffer} onAccept={onAcceptOffer} onDecline={onDeclineOffer} />
+              <Typography fontSize="0.9rem" color="text.primary">
+                We have sent you the offer letter by email
+                {application.offerEmailSubject && (
+                  <>
+                    , with the subject <strong>&quot;{application.offerEmailSubject}&quot;</strong>
+                  </>
+                )}
+                . If you can&apos;t find it, please check your spam folder.
+              </Typography>
+              {deadline && (
+                <Typography fontSize="0.9rem" fontWeight={700} color="text.primary" mt={1}>
+                  Please respond by {deadline.date} (anywhere on Earth).
+                </Typography>
+              )}
+            </Callout>
+            <OfferActions
+              canAccept={canAcceptOffer}
+              onAccept={onAcceptOffer}
+              onDecline={onDeclineOffer}
+            />
+          </>
         )}
 
         {application.status === ApplicationStatus.OfferExpired && (
@@ -179,20 +208,30 @@ const ApplicationDetails = ({
                 The hiring team will contact you with the next steps.
               </Typography>
             ) : documentsStatus === undefined ? (
-              <Skeleton variant="rounded" width={170} height={40} sx={{ borderRadius: "999px", mt: 1.5 }} />
+              <Skeleton
+                variant="rounded"
+                width={170}
+                height={40}
+                sx={{ borderRadius: "999px", mt: 1.5 }}
+              />
             ) : documentsStatus === null ? (
               <>
                 <Typography fontSize="0.9rem" color="text.primary" mt={0.5}>
                   We could not check whether your documents were submitted.
                 </Typography>
-                <Button variant="outlined" onClick={onRetryDocumentsStatus} sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  onClick={onRetryDocumentsStatus}
+                  sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}
+                >
                   Try again
                 </Button>
               </>
             ) : documentsStatus.submitted ? (
               <>
                 <Typography fontSize="0.9rem" color="text.primary">
-                  We received your details and documents. The hiring team will contact you with the next steps.
+                  We received your details and documents. The hiring team will contact you with the
+                  next steps.
                 </Typography>
                 {documentsStatus.canEdit ? (
                   <>
@@ -207,7 +246,11 @@ const ApplicationDetails = ({
                         .
                       </Typography>
                     )}
-                    <Button variant="outlined" onClick={onSubmitDocuments} sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={onSubmitDocuments}
+                      sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}
+                    >
                       Edit submission
                     </Button>
                   </>
@@ -222,10 +265,14 @@ const ApplicationDetails = ({
             ) : (
               <>
                 <Typography fontSize="0.9rem" color="text.primary">
-                  Please submit the documents we need for your onboarding. The hiring team will contact you with the
-                  next steps.
+                  Please submit the documents we need for your onboarding. The hiring team will
+                  contact you with the next steps.
                 </Typography>
-                <Button variant="contained" onClick={onSubmitDocuments} sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}>
+                <Button
+                  variant="contained"
+                  onClick={onSubmitDocuments}
+                  sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}
+                >
                   Submit documents
                 </Button>
               </>
