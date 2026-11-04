@@ -60,10 +60,13 @@ const AppShell = () => {
   const profileState = useAppSelector((state: RootState) => state.careers.profileState);
   const sessionExpired = useAppSelector((state: RootState) => state.careers.sessionExpired);
 
-  // The data the open route needs.
-  const { applications: needsApplications, profile: needsProfile } = dataNeededBy(useMatches());
+  // The data the open route needs. A signed-in candidate also has the applications and the profile loaded at once, so
+  // moving between the two pages does not wait for the backend.
+  const routeNeeds = dataNeededBy(useMatches());
+  const needsApplications = isSignedIn || routeNeeds.applications;
+  const needsProfile = isSignedIn || routeNeeds.profile;
 
-  // Loads the candidate's applications and profile for the open route.
+  // Loads the candidate's applications and profile as soon as they are signed in.
   useEffect(() => {
     const loadApps = needsApplications && applicationsState === State.idle;
     const loadOwnProfile = needsProfile && profileState === State.idle;

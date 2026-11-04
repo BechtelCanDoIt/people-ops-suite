@@ -94,7 +94,8 @@ const AppHandler = () => {
                 {
                   path: "/applications/:id/documents",
                   element: DOCUMENTS_SUBMISSION_ENABLED ? <View.documents /> : <DocumentsNotOpen />,
-                  // While the step is closed the route only redirects, so it loads nothing; the page it goes to does.
+                  // While the step is closed the route only redirects, so it declares no needs of its own. A signed-in
+                  // candidate has the applications and the profile loaded anyway (see AppShell).
                   handle: {
                     needs: DOCUMENTS_SUBMISSION_ENABLED ? ["applications", "profile"] : [],
                   } satisfies RouteHandle,
