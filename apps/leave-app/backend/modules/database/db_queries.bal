@@ -304,9 +304,9 @@ isolated function setLeaveStatusQuery(Status status, int leaveId, string? approv
 #
 # + leaveId - ID of the leave record
 # + approverEmail - Email of the approver rejecting the request
-# + reason - Reason for the rejection
+# + reason - Reason for the rejection, or nil when none is given
 # + return - Update query that only changes the leave while it is pending
-isolated function rejectLeaveQuery(int leaveId, string approverEmail, string reason)
+isolated function rejectLeaveQuery(int leaveId, string approverEmail, string? reason)
     returns sql:ParameterizedQuery => `
         UPDATE
             leave_submissions

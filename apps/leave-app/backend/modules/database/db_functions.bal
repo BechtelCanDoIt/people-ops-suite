@@ -188,9 +188,9 @@ public isolated function setLeaveStatus(int leaveId, Status approvalStatus, stri
 #
 # + leaveId - Leave ID
 # + approverEmail - Email of the approver rejecting the request
-# + reason - Reason for the rejection
+# + reason - Reason for the rejection, or nil when none is given
 # + return - Nil on success, `LeaveNotPendingError` if the leave is no longer pending, or an error on failure
-public isolated function rejectLeave(int leaveId, string approverEmail, string reason) returns error? {
+public isolated function rejectLeave(int leaveId, string approverEmail, string? reason) returns error? {
     sql:ExecutionResult|sql:Error result = leaveDbClient->execute(rejectLeaveQuery(leaveId, approverEmail, reason));
     if result is sql:Error {
         return error("Error occurred while rejecting leave!", result);

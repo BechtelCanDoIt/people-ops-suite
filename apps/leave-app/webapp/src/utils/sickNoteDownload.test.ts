@@ -30,9 +30,14 @@ describe("sickNoteExtension", () => {
     expect(sickNoteExtension("image/jpeg")).toBe(".jpg");
     expect(sickNoteExtension("image/png")).toBe(".png");
   });
+  it("ignores the case of the content type", () => {
+    expect(sickNoteExtension("Application/PDF")).toBe(".pdf");
+  });
   it("returns empty for unknown types", () => {
     expect(sickNoteExtension("text/plain")).toBe("");
     expect(sickNoteExtension("")).toBe("");
+    expect(sickNoteExtension("constructor")).toBe("");
+    expect(sickNoteExtension("__proto__")).toBe("");
   });
 });
 

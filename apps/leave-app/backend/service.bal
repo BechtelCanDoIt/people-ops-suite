@@ -534,7 +534,8 @@ service http:InterceptableService / on new http:Listener(9090,
                     };
                 }
 
-                string? leadMail = employeeDetails.leadEmail;
+                // HR can send an empty lead, which counts as none.
+                string? leadMail = nonBlankEmail(employeeDetails.leadEmail);
                 if leadMail is () {
                     string errMsg = "A reporting lead is required to apply for sabbatical leave.";
                     log:printWarn(errMsg);
@@ -1002,22 +1003,23 @@ service http:InterceptableService / on new http:Listener(9090,
                     jwt
             );
             if cancelledLeaveDetails.leaveType == database:SABBATICAL_LEAVE {
-                string? approverEmail = cancelledLeaveDetails.approverEmail;
-                // process cancellation for the sabbatical leaves
-                if approverEmail is () {
-                    string errMsg = string `Approver email is not available for leave with ID: ${id}.`;
-                    log:printError(errMsg);
-                    return <http:InternalServerError>{
-                        body: {
-                            message: errMsg
-                        }
-                    };
+                // The applicant's current lead is told, as the lead may have changed since the request was made or
+                // decided. The saved approver is used when HR has no lead, as for an Other Authorized withdrawal.
+                employee:Employee & readonly|error applicant = employee:getEmployee(cancelledLeaveDetails.email);
+                if applicant is error {
+                    log:printWarn("Could not look up the lead of a sabbatical applicant", applicant, leaveId = id);
                 }
+                string? hrLeadEmail = applicant is error ? () : nonBlankEmail(applicant.leadEmail);
+                string? approverEmail = hrLeadEmail ?: nonBlankEmail(cancelledLeaveDetails.approverEmail);
+                if approverEmail is () {
+                    log:printWarn("Sabbatical cancelled with no known lead, so the lead is not notified", leaveId = id);
+                }
+                // The leave is already cancelled, so a notification problem is logged, not reported as a failure.
                 error? cancellationResult = processSabbaticalLeaveRequest({
                                                                               action: CANCEL,
                                                                               applicantEmail:
                                                                             cancelledLeaveDetails.email,
-                                                                              approverEmail,
+                                                                              approverEmail: approverEmail ?: "",
                                                                               leaveStartDate:
                                                                             cancelledLeaveDetails.
                                                                             startDate.substring(0, 10),
@@ -1027,11 +1029,6 @@ service http:InterceptableService / on new http:Listener(9090,
                                                                           });
                 if cancellationResult is error {
                     log:printError("Failed to process sabbatical leave cancellation notification", cancellationResult);
-                    return <http:InternalServerError>{
-                        body: {
-                            message: "Error occurred while cancelling sabbatical leave!"
-                        }
-                    };
                 }
             } else {
                 // Send email in the regular format for non-sabbatical leaves
@@ -1476,6 +1473,13 @@ service http:InterceptableService / on new http:Listener(9090,
                                                                   approverEmail: email,
                                                                   leaveId: id
                                                               });
+        if approvalResult is database:LeaveNotPendingError {
+            return <http:BadRequest>{
+                body: {
+                    message: approvalResult.message()
+                }
+            };
+        }
         if approvalResult is error {
             log:printError("Failed to process sabbatical leave approval notification", approvalResult);
             return <http:InternalServerError>{

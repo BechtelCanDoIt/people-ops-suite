@@ -489,7 +489,7 @@ modules = [
 [[package]]
 org = "wso2"
 name = "leave_service"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
 	{org = "ballerina", name = "cache"},
 	{org = "ballerina", name = "crypto"},
