@@ -195,7 +195,7 @@ export function nextStepOf(application: Application, interviews: ApplicationInte
         : "Waiting for the interview outcome";
     }
     case ApplicationStatus.Selected:
-      return "You have been selected for this position. The hiring team will email you your offer letter.";
+      return "You have been selected for this position. Your offer letter will be sent to you soon.";
     case ApplicationStatus.Offer:
       return application.offerEmailSubject
         ? `Your offer was emailed to you with the subject "${application.offerEmailSubject}".`

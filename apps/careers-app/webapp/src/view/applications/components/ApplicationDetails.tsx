@@ -152,8 +152,7 @@ const ApplicationDetails = ({
               Congratulations, you have been selected.
             </Typography>
             <Typography fontSize="0.9rem" color="text.primary">
-              The hiring team will email you your offer letter. Please check your inbox, and your
-              spam folder if you can&apos;t find it.
+              Your offer letter will be sent to you soon.
             </Typography>
           </Callout>
         )}

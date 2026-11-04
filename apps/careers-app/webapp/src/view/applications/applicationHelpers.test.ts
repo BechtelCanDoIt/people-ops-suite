@@ -214,9 +214,9 @@ describe("nextStepOf for an open offer", () => {
 });
 
 describe("nextStepOf for a selected candidate", () => {
-  it("tells the candidate that the offer letter will be emailed", () => {
+  it("tells the candidate that the offer letter will be sent soon", () => {
     expect(nextStepOf(application({ status: ApplicationStatus.Selected }), [])).toBe(
-      "You have been selected for this position. The hiring team will email you your offer letter.",
+      "You have been selected for this position. Your offer letter will be sent to you soon.",
     );
   });
 });
