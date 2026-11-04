@@ -48,7 +48,7 @@ function atsStatusesAreShownAsTheWebAppNamesThem() {
     test:assertEquals(applicationStatusOf("SHORTLISTED"), "Screening");
     test:assertEquals(applicationStatusOf("INTERVIEW_IN_PROGRESS"), "Interview");
     test:assertEquals(applicationStatusOf("INTERVIEW_COMPLETED"), "Interview");
-    test:assertEquals(applicationStatusOf("HIRED"), "Interview");
+    test:assertEquals(applicationStatusOf("HIRED"), "Selected");
     test:assertEquals(applicationStatusOf("REJECTED"), "Rejected");
     test:assertEquals(applicationStatusOf("NOT_SHORTLISTED"), "Rejected");
     test:assertEquals(applicationStatusOf("VACANCY_CLOSED"), "Applied");
@@ -61,7 +61,7 @@ function applicationsAreNewestFirstWithoutDeletedOnes() {
     ApplicationSummary[] applications = applicationsOf(history);
     test:assertEquals(applications.length(), 2);
     test:assertEquals(applications[0].id, "2");
-    test:assertEquals(applications[0].status, "Interview");
+    test:assertEquals(applications[0].status, "Selected");
     test:assertEquals(applications[1].id, "1");
     test:assertEquals(applications[1].jobId, "7");
     test:assertEquals(applications[1].jobTitle, "Engineer");
