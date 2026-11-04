@@ -1,0 +1,315 @@
+// Copyright (c) 2026 WSO2 LLC. (https://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+import leave_service.authorization;
+import leave_service.database;
+import leave_service.employee;
+import leave_service.policy;
+import leave_service.sick_note;
+
+import ballerina/http;
+import ballerina/lang.value;
+import ballerina/log;
+import ballerina/mime;
+
+# Key that encrypts sick notes: 32 bytes, base64-encoded. Each environment has its own key, kept in the secret store.
+configurable string sickNoteEncryptionKey = ?;
+
+# The decoded sick note key. A key that is not base64 of exactly 32 bytes stops the service from starting.
+final byte[] & readonly sickNoteKey = check sick_note:decodeKey(sickNoteEncryptionKey).cloneReadOnly();
+
+# Name of the multipart part that carries the leave as JSON.
+const LEAVE_PART = "leave";
+
+# Name of the multipart part that carries the sick note file.
+const SICK_NOTE_PART = "sickNote";
+
+# Largest sick leave request accepted, in bytes: the largest sick note plus 1 MB for the leave and the multipart
+# framing. It is also the listener's body limit, as every other endpoint takes a small JSON body.
+const MAX_SICK_LEAVE_REQUEST_BYTES = sick_note:MAX_SICK_NOTE_BYTES + 1048576;
+
+# Largest `leave` part accepted, in bytes.
+const MAX_LEAVE_PART_BYTES = 65536;
+
+const ERR_MSG_SUBMIT_LEAVE_FAILED = "Error occurred while submitting a leave";
+const ERR_MSG_SICK_NOTE_TOO_LARGE = "The sick note must be at most 5 MB.";
+const ERR_MSG_SICK_LEAVE_PARTS = "The request must contain exactly one leave part and one sickNote part.";
+const ERR_MSG_SICK_NOTE_NOT_FOUND = "No sick note was found for this leave.";
+const ERR_MSG_SICK_NOTE_UNREADABLE = "The sick note could not be read.";
+const ERR_MSG_SICK_NOTE_FETCH_FAILED = "Error occurred while fetching the sick note";
+
+# Refuse a sick leave request that declares a length over the limit, before any of its body is read. A body sent in
+# chunks declares no length and is not refused here: the listener's `maxEntityBodySize` still bounds it.
+#
+# + req - Sick leave request
+# + return - PayloadTooLarge if the declared length is over `MAX_SICK_LEAVE_REQUEST_BYTES`, otherwise nil
+function checkSickLeaveRequestSize(http:Request req) returns http:PayloadTooLarge? {
+    string|http:HeaderNotFoundError declared = req.getHeader(http:CONTENT_LENGTH);
+    int|error length = declared is string ? int:fromString(declared) : declared;
+    if length is int && length > MAX_SICK_LEAVE_REQUEST_BYTES {
+        return <http:PayloadTooLarge>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_TOO_LARGE
+            }
+        };
+    }
+    return ();
+}
+
+# Submit sick leave in France with its sick note. The note is checked, encrypted and saved with the leave in one
+# transaction; the leave then goes through the same submission as `POST /leaves`. The note is never sent by email or
+# added to the calendar event.
+#
+# + req - Multipart request with the `leave` and `sickNote` parts
+# + email - Email of the applicant
+# + jwt - JWT token of the applicant
+# + return - Ok when the leave is submitted, BadRequest for an invalid leave or sick note, otherwise
+# InternalServerError
+function submitSickLeave(http:Request req, string email, string jwt)
+    returns http:Ok|http:BadRequest|http:InternalServerError {
+
+    SickLeaveSubmission|error submission = readSickLeaveParts(req);
+    if submission is error {
+        log:printWarn("Sick leave request refused", employee = email, reason = submission.message());
+        return <http:BadRequest>{
+            body: {
+                message: submission.message()
+            }
+        };
+    }
+    string|error contentType = sick_note:detectContentType(submission.sickNote);
+    if contentType is error {
+        log:printWarn("Sick note refused", employee = email, reason = contentType.message());
+        return <http:BadRequest>{
+            body: {
+                message: contentType.message()
+            }
+        };
+    }
+    string|error location = employee:getEmployeeLocation(email, jwt);
+    if location is error {
+        log:printError(ERR_MSG_SUBMIT_LEAVE_FAILED, location);
+        return <http:InternalServerError>{
+            body: {
+                message: ERR_MSG_SUBMIT_LEAVE_FAILED
+            }
+        };
+    }
+    if !policy:requiresSickNote(submission.leave.leaveType, location) {
+        log:printWarn("Sick leave request refused: not sick leave in France", employee = email,
+                leaveType = submission.leave.leaveType, location = location);
+        return <http:BadRequest>{
+            body: {
+                message: "This endpoint is only for sick leave in France."
+            }
+        };
+    }
+    sick_note:EncryptedSickNote|error encrypted = sick_note:encrypt(submission.sickNote, sickNoteKey);
+    if encrypted is error {
+        log:printError("Error occurred while encrypting a sick note", encrypted);
+        return <http:InternalServerError>{
+            body: {
+                message: ERR_MSG_SUBMIT_LEAVE_FAILED
+            }
+        };
+    }
+
+    CalculatedLeave|http:Ok|http:BadRequest|http:InternalServerError result = submitLeave(submission.leave, email, jwt,
+            false, {
+                content: encrypted.content,
+                iv: encrypted.iv,
+                keyId: encrypted.keyId,
+                contentType,
+                sizeBytes: submission.sickNote.length(),
+                uploadedBy: email
+            });
+    // Not reached: a calculated leave is returned only in validation mode, which this submission never uses.
+    if result is CalculatedLeave {
+        return <http:InternalServerError>{
+            body: {
+                message: ERR_MSG_SUBMIT_LEAVE_FAILED
+            }
+        };
+    }
+    return result;
+}
+
+# Read the `leave` and `sickNote` parts of a multipart sick leave request. A repeated or unknown part is refused, and
+# a part that declares a size over its limit is refused before it is read.
+#
+# + req - Multipart request
+# + return - The leave and the sick note file, or an error whose message can be shown to the user
+function readSickLeaveParts(http:Request req) returns SickLeaveSubmission|error {
+    mime:Entity[]|http:ClientError parts = req.getBodyParts();
+    if parts is http:ClientError {
+        return error("Send the leave and the sick note as multipart/form-data.", parts);
+    }
+    if parts.length() > 2 {
+        return error(ERR_MSG_SICK_LEAVE_PARTS);
+    }
+    LeavePayload? leave = ();
+    byte[]? sickNote = ();
+    foreach mime:Entity part in parts {
+        string partName = part.getContentDisposition().name;
+        if partName == LEAVE_PART && leave is () {
+            if declaresMoreThan(part, MAX_LEAVE_PART_BYTES) {
+                return error("The leave part is too large.");
+            }
+            LeavePayload|error leavePart = readLeavePart(part);
+            if leavePart is error {
+                return error("The leave part is not a valid leave.", leavePart);
+            }
+            leave = leavePart;
+        } else if partName == SICK_NOTE_PART && sickNote is () {
+            if declaresMoreThan(part, sick_note:MAX_SICK_NOTE_BYTES) {
+                return error(ERR_MSG_SICK_NOTE_TOO_LARGE);
+            }
+            byte[]|mime:ParserError sickNotePart = part.getByteArray();
+            if sickNotePart is mime:ParserError {
+                return error("The sick note could not be read from the request.", sickNotePart);
+            }
+            sickNote = sickNotePart;
+        } else {
+            return error(ERR_MSG_SICK_LEAVE_PARTS);
+        }
+    }
+    if leave is () {
+        return error("The leave part is missing.");
+    }
+    // A missing sick note is reported by `sick_note:detectContentType` as an empty one.
+    return {leave, sickNote: sickNote ?: []};
+}
+
+# Check whether a multipart part declares a size over the given limit. A part that declares no size is not refused
+# here; the request's own size limit still bounds it.
+#
+# + part - Multipart part
+# + maxBytes - Largest size allowed, in bytes
+# + return - `true` if the part's `Content-Length` header is over `maxBytes`
+function declaresMoreThan(mime:Entity part, int maxBytes) returns boolean {
+    int|error declared = part.getContentLength();
+    return declared is int && declared > maxBytes;
+}
+
+# Read the leave from the `leave` part, which carries the same JSON as the `POST /leaves` body.
+#
+# + part - The `leave` part
+# + return - The leave, or an error if the part is not a valid leave
+function readLeavePart(mime:Entity part) returns LeavePayload|error {
+    byte[] content = check part.getByteArray();
+    return value:fromJsonStringWithType(check string:fromBytes(content));
+}
+
+# Send a sick note to the applicant or a member of `sickNoteRoles`. Access is checked from the note's details before
+# its encrypted content is read. The download is recorded before the file is sent, and the file is not sent if the
+# record cannot be saved.
+#
+# + leaveId - Leave ID
+# + requesterEmail - Email of the user asking for the file
+# + requesterGroups - Groups of the user asking for the file
+# + return - The file, NotFound if the leave has no sick note or it was deleted, Forbidden for anyone other than the
+# applicant and `sickNoteRoles`, otherwise InternalServerError
+function downloadSickNote(int leaveId, string requesterEmail, string[] requesterGroups)
+    returns http:Response|http:NotFound|http:Forbidden|http:InternalServerError {
+
+    database:StoredSickNote|error? sickNote = database:getSickNote(leaveId);
+    if sickNote is error {
+        log:printError(ERR_MSG_SICK_NOTE_FETCH_FAILED, sickNote, leaveId = leaveId);
+        return <http:InternalServerError>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_FETCH_FAILED
+            }
+        };
+    }
+    if sickNote is () {
+        log:printWarn("Sick note not found", leaveId = leaveId, requestedBy = requesterEmail);
+        return <http:NotFound>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_NOT_FOUND
+            }
+        };
+    }
+    if !sick_note:canDownload(requesterEmail, requesterGroups, sickNote.email,
+            authorization:authorizedRoles.sickNoteRoles) {
+        log:printWarn("Sick note download refused", leaveId = leaveId, requestedBy = requesterEmail);
+        return <http:Forbidden>{
+            body: {
+                message: "You are not authorized to download this sick note."
+            }
+        };
+    }
+    if sickNote.deletedAt is string {
+        log:printWarn("Sick note already deleted", leaveId = leaveId, requestedBy = requesterEmail);
+        return <http:NotFound>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_NOT_FOUND
+            }
+        };
+    }
+
+    // Read only once the caller may download the note.
+    database:SickNoteContent|error? stored = database:getSickNoteContent(sickNote.id);
+    if stored is error {
+        log:printError(ERR_MSG_SICK_NOTE_FETCH_FAILED, stored, leaveId = leaveId);
+        return <http:InternalServerError>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_FETCH_FAILED
+            }
+        };
+    }
+    // The retention job may have cleared the content since the details were read.
+    byte[]? content = stored is () ? () : stored.content;
+    byte[]? iv = stored is () ? () : stored.iv;
+    if content is () || iv is () {
+        log:printWarn("Sick note content already cleared", leaveId = leaveId, requestedBy = requesterEmail);
+        return <http:NotFound>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_NOT_FOUND
+            }
+        };
+    }
+
+    // Only the current key exists; a note under any other key id cannot be decrypted.
+    byte[]|error file = sickNote.keyId == sick_note:CURRENT_KEY_ID
+        ? sick_note:decrypt({content, iv, keyId: sickNote.keyId}, sickNoteKey)
+        : error(string `No key is configured for key id ${sickNote.keyId}.`);
+    if file is error {
+        log:printError(ERR_MSG_SICK_NOTE_UNREADABLE, file, leaveId = leaveId);
+        return <http:InternalServerError>{
+            body: {
+                message: ERR_MSG_SICK_NOTE_UNREADABLE
+            }
+        };
+    }
+    error? recorded = database:recordSickNoteDownload(sickNote.id, leaveId, requesterEmail);
+    if recorded is error {
+        string errMsg = "Error occurred while recording the sick note download";
+        log:printError(errMsg, recorded, leaveId = leaveId);
+        return <http:InternalServerError>{
+            body: {
+                message: errMsg
+            }
+        };
+    }
+    log:printInfo("Sick note downloaded", leaveId = leaveId, downloadedBy = requesterEmail);
+
+    http:Response response = new;
+    response.setBinaryPayload(file, sickNote.contentType);
+    response.setHeader(mime:CONTENT_DISPOSITION,
+            string `attachment; filename="${sick_note:downloadFileName(leaveId, sickNote.contentType)}"`);
+    response.setHeader(http:CACHE_CONTROL, http:NO_STORE);
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    return response;
+}
