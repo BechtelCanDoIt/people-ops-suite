@@ -97,7 +97,7 @@ isolated function applicationStatusOf(string atsStatus, string? offerStatus = ()
         "INTERVIEW_IN_PROGRESS"|"INTERVIEW_COMPLETED" => {
             return "Interview";
         }
-        "HIRED" => {
+        CANDIDATE_STATUS_HIRED => {
             return "Selected";
         }
         "REJECTED"|"NOT_SHORTLISTED" => {

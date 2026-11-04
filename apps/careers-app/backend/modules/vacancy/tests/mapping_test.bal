@@ -313,3 +313,12 @@ function theDateOfAnApplicationWithAnOfferIsTheDateOfTheOffer() {
     entry.offerUpdatedAt = "2026-11-05 14:30:00";
     test:assertEquals(applicationOf(entry).updatedDate, "2026-11-05 14:30:00");
 }
+
+@test:Config {}
+function aCandidateFindsOnlyTheirOwnApplicationById() {
+    AtsHistoryEntry[] history = [historyEntry(1), historyEntry(2, "HIRED"), historyEntry(3, "DELETED")];
+    test:assertEquals(ownApplication(history, 2)?.status, "HIRED");
+    test:assertEquals(ownApplication(history, 3)?.status, "DELETED");
+    test:assertEquals(ownApplication(history, 99), ());
+    test:assertEquals(ownApplication([], 1), ());
+}
