@@ -193,10 +193,14 @@ function processSabbaticalLeaveRequest(SabbaticalProcessPayload payload)
 
 # Get recipients for sabbatical leave notifications.
 # + applicantEmail - Applicant email
-# + leadEmail - Reporting lead email
+# + leadEmail - Reporting lead email. Blank only for a cancellation whose lead is not known, which then goes to the
+# applicant and the sabbatical groups
 # + return - List of recipient emails or an error
 function getRecipientsForSabbaticalNotifications(string applicantEmail, string leadEmail)
     returns string[]|error {
+    if leadEmail.trim() == "" {
+        return [...sabbaticalMailGroups, applicantEmail];
+    }
     Employee reportingLead = check employee:getEmployee(leadEmail);
 
     string[] recipientsList = [...sabbaticalMailGroups, applicantEmail, leadEmail];

@@ -1007,23 +1007,20 @@ service http:InterceptableService / on new http:Listener(9090,
                 // so its lead is looked up instead.
                 if approverEmail is () {
                     employee:Employee & readonly|error applicant = employee:getEmployee(cancelledLeaveDetails.email);
+                    if applicant is error {
+                        log:printWarn("Could not look up the lead of a sabbatical applicant", applicant, leaveId = id);
+                    }
                     approverEmail = applicant is error ? () : nonBlankEmail(applicant.leadEmail);
                 }
-                // process cancellation for the sabbatical leaves
                 if approverEmail is () {
-                    string errMsg = string `Approver email is not available for leave with ID: ${id}.`;
-                    log:printError(errMsg);
-                    return <http:InternalServerError>{
-                        body: {
-                            message: errMsg
-                        }
-                    };
+                    log:printWarn("Sabbatical cancelled with no known lead, so the lead is not notified", leaveId = id);
                 }
+                // The leave is already cancelled, so a notification problem is logged, not reported as a failure.
                 error? cancellationResult = processSabbaticalLeaveRequest({
                                                                               action: CANCEL,
                                                                               applicantEmail:
                                                                             cancelledLeaveDetails.email,
-                                                                              approverEmail,
+                                                                              approverEmail: approverEmail ?: "",
                                                                               leaveStartDate:
                                                                             cancelledLeaveDetails.
                                                                             startDate.substring(0, 10),
@@ -1033,11 +1030,6 @@ service http:InterceptableService / on new http:Listener(9090,
                                                                           });
                 if cancellationResult is error {
                     log:printError("Failed to process sabbatical leave cancellation notification", cancellationResult);
-                    return <http:InternalServerError>{
-                        body: {
-                            message: "Error occurred while cancelling sabbatical leave!"
-                        }
-                    };
                 }
             } else {
                 // Send email in the regular format for non-sabbatical leaves
