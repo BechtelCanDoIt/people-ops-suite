@@ -30,6 +30,7 @@ import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
 import Callout from "@component/common/Callout";
+import { useIsDark } from "@config/brand";
 import { ApplicationStatus, DOCUMENTS_SUBMISSION_ENABLED } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
@@ -69,6 +70,7 @@ const ApplicationDetails = ({
   documentsStatus,
   onRetryDocumentsStatus,
 }: ApplicationDetailsProps) => {
+  const isDark = useIsDark();
   const actionNeeded = isOffer(application);
   // An upcoming interview is shown in orange.
   const interviewComing = upcomingInterviewOf(application, interviews) !== undefined;
@@ -108,15 +110,9 @@ const ApplicationDetails = ({
           fontWeight={actionNeeded || interviewComing ? 700 : 500}
           sx={{
             mt: 1.5,
-            // The darker orange on the light theme, which is the one with enough contrast against white. The other text
-            // uses the colour name, so it follows the theme, in the dark one as well.
-            color:
-              actionNeeded || interviewComing
-                ? (theme) =>
-                    theme.palette.mode === "dark"
-                      ? theme.palette.primary.main
-                      : theme.palette.primary.dark
-                : "text.secondary",
+            // A lighter orange on the dark theme and the darker one on the light theme, each with enough contrast against
+            // its background. The mode comes from useIsDark: a theme callback always answers with the light scheme here.
+            color: actionNeeded || interviewComing ? (isDark ? "#FFA366" : "primary.dark") : "text.secondary",
           }}
         >
           {nextStepOf(application, interviews)}
@@ -164,19 +160,15 @@ const ApplicationDetails = ({
                 Congratulations, you have been selected.
               </Typography>
               <Typography fontSize="0.9rem" color="text.primary">
-                We have sent you the offer letter by email
-                {application.offerEmailSubject && (
+                Check your email for your offer letter, and accept or decline the offer
+                {deadline ? (
                   <>
-                    , with the subject <strong>&quot;{application.offerEmailSubject}&quot;</strong>
+                    {" "}
+                    before <strong>{deadline.date}</strong> (anywhere on Earth)
                   </>
-                )}
-                . If you can&apos;t find it, please check your spam folder.
+                ) : null}
+                .
               </Typography>
-              {deadline && (
-                <Typography fontSize="0.9rem" fontWeight={700} color="text.primary" mt={1}>
-                  Please respond by {deadline.date} (anywhere on Earth).
-                </Typography>
-              )}
             </Callout>
             <OfferActions
               canAccept={canAcceptOffer}
