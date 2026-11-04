@@ -43,6 +43,10 @@ export const SnackMessage = {
 export const OFFER_CONFLICT_ERROR = "OfferConflictError";
 export const OFFER_EXPIRED_ERROR = "OfferExpiredError";
 
+// The first phase stops once a candidate has accepted or declined an offer, so the onboarding documents step is hidden.
+// Turn it on, together with the backend setting documentsEnabled, when that step opens.
+export const DOCUMENTS_SUBMISSION_ENABLED = false;
+
 export enum ApplicationStatus {
   Applied = "Applied",
   Screening = "Screening",

@@ -30,6 +30,7 @@ import PageContainer from "@component/common/PageContainer";
 import { CareersSiteUrl } from "@config/config";
 import {
   ApplicationStatus,
+  DOCUMENTS_SUBMISSION_ENABLED,
   OFFER_CONFLICT_ERROR,
   OFFER_EXPIRED_ERROR,
   SnackMessage,
@@ -105,7 +106,9 @@ const Applications = () => {
 
   // Raised to ask for the documents check again after it failed.
   const [documentsStatusAttempt, setDocumentsStatusAttempt] = useState(0);
-  const hasAcceptedOffer = selectedApplication?.status === ApplicationStatus.OfferAccepted;
+  // The documents status is only asked for while the documents step is open.
+  const hasAcceptedOffer =
+    DOCUMENTS_SUBMISSION_ENABLED && selectedApplication?.status === ApplicationStatus.OfferAccepted;
 
   // A retry shows the loading state again, for the opened application only.
   const retryDocumentsStatus = () => {
@@ -184,7 +187,9 @@ const Applications = () => {
       {selectedApplication && offerDialog === "welcome" && (
         <WelcomeDialog
           jobTitle={selectedApplication.jobTitle}
-          onSubmitDocuments={() => navigate(`/applications/${selectedApplication.id}/documents`)}
+          onSubmitDocuments={
+            DOCUMENTS_SUBMISSION_ENABLED ? () => navigate(`/applications/${selectedApplication.id}/documents`) : undefined
+          }
           onClose={() => setOfferDialog(null)}
         />
       )}

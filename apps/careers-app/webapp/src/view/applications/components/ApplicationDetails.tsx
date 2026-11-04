@@ -20,7 +20,7 @@ import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
 import Callout from "@component/common/Callout";
-import { ApplicationStatus } from "@config/constant";
+import { ApplicationStatus, DOCUMENTS_SUBMISSION_ENABLED } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
   STAGES,
@@ -163,7 +163,11 @@ const ApplicationDetails = ({
             <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
               You accepted this offer.
             </Typography>
-            {documentsStatus === undefined ? (
+            {!DOCUMENTS_SUBMISSION_ENABLED ? (
+              <Typography fontSize="0.9rem" color="text.primary">
+                The hiring team will contact you with the next steps.
+              </Typography>
+            ) : documentsStatus === undefined ? (
               <Skeleton variant="rounded" width={170} height={40} sx={{ borderRadius: "999px", mt: 1.5 }} />
             ) : documentsStatus === null ? (
               <>
