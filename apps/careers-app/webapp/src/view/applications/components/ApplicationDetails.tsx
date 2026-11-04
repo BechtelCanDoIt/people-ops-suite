@@ -124,7 +124,7 @@ const ApplicationDetails = ({
         {isOffer(application) && (
           <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
             <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
-              Congratulations, you are accepted.
+              Congratulations, you have been selected.
             </Typography>
             <Typography fontSize="0.9rem" color="text.primary">
               We have sent you the offer letter by email
