@@ -120,6 +120,18 @@ const ApplicationDetails = ({
           ))}
         </Stepper>
 
+        {application.status === ApplicationStatus.Selected && (
+          <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
+            <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
+              Congratulations, you have been selected.
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.primary">
+              The hiring team will email you your offer letter. Please check your inbox, and your spam folder if you
+              can&apos;t find it.
+            </Typography>
+          </Callout>
+        )}
+
         {isOffer(application) && (
           <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
             <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">

@@ -28,6 +28,7 @@ const statusConfig: Record<ApplicationStatus, { color: string }> = {
   [ApplicationStatus.Applied]: { color: "#3B82F6" },
   [ApplicationStatus.Screening]: { color: "#F59E0B" },
   [ApplicationStatus.Interview]: { color: "#8B5CF6" },
+  [ApplicationStatus.Selected]: { color: "#14B8A6" },
   [ApplicationStatus.Offer]: { color: "#10B981" },
   [ApplicationStatus.OfferAccepted]: { color: "#059669" },
   [ApplicationStatus.OfferDeclined]: { color: "#6B7280" },

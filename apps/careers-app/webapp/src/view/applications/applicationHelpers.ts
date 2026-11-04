@@ -21,16 +21,17 @@ import { BRAND_ORANGE, ON_ORANGE } from "@config/brand";
 import { ApplicationStatus } from "@config/constant";
 
 // The stages shown in the tracker.
-export const STAGES = ["Applied", "Screening", "Interview", "Offer"];
+export const STAGES = ["Applied", "Screening", "Interview", "Selected", "Offer"];
 
 const STAGE_INDEX: Partial<Record<ApplicationStatus, number>> = {
   [ApplicationStatus.Applied]: 0,
   [ApplicationStatus.Screening]: 1,
   [ApplicationStatus.Interview]: 2,
-  [ApplicationStatus.Offer]: 3,
-  [ApplicationStatus.OfferAccepted]: 3,
-  [ApplicationStatus.OfferDeclined]: 3,
-  [ApplicationStatus.OfferExpired]: 3,
+  [ApplicationStatus.Selected]: 3,
+  [ApplicationStatus.Offer]: 4,
+  [ApplicationStatus.OfferAccepted]: 4,
+  [ApplicationStatus.OfferDeclined]: 4,
+  [ApplicationStatus.OfferExpired]: 4,
 };
 
 // Parses a date, or null when invalid; a date without a time is a local day.
@@ -73,6 +74,7 @@ export interface HistoryEntry {
 
 // Statuses that end the journey or answer the offer.
 const FINAL_STATUSES = [
+  ApplicationStatus.Selected,
   ApplicationStatus.Offer,
   ApplicationStatus.OfferAccepted,
   ApplicationStatus.OfferDeclined,
@@ -127,6 +129,7 @@ export type ApplicationFilter = "all" | ApplicationTab;
 // The list tab an application belongs under.
 export const tabOf = (application: Application): ApplicationTab => {
   switch (application.status) {
+    case ApplicationStatus.Selected:
     case ApplicationStatus.Offer:
     case ApplicationStatus.OfferAccepted:
       return "offers";
@@ -181,6 +184,8 @@ export function nextStepOf(application: Application, interviews: ApplicationInte
         ? `Next: ${upcoming.round} · ${formatDateTime(upcoming.dateTime)}`
         : "Waiting for the interview outcome";
     }
+    case ApplicationStatus.Selected:
+      return "You have been selected for this position. The hiring team will email you your offer letter.";
     case ApplicationStatus.Offer:
       return application.offerEmailSubject
         ? `Your offer was emailed to you with the subject "${application.offerEmailSubject}".`

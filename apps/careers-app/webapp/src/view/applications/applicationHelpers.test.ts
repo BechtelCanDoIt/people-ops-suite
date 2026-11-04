@@ -60,7 +60,17 @@ describe("trackerOf", () => {
     [[ApplicationStatus.Applied], 0],
     [[ApplicationStatus.Applied, ApplicationStatus.Screening], 1],
     [[ApplicationStatus.Applied, ApplicationStatus.Screening, ApplicationStatus.Interview], 2],
-    [[ApplicationStatus.Applied, ApplicationStatus.Screening, ApplicationStatus.Interview, ApplicationStatus.Offer], 3],
+    [[ApplicationStatus.Applied, ApplicationStatus.Screening, ApplicationStatus.Interview, ApplicationStatus.Selected], 3],
+    [
+      [
+        ApplicationStatus.Applied,
+        ApplicationStatus.Screening,
+        ApplicationStatus.Interview,
+        ApplicationStatus.Selected,
+        ApplicationStatus.Offer,
+      ],
+      4,
+    ],
   ])("stops a rejected application at the last stage it reached (%#)", (stages, step) => {
     expect(trackerOf(rejectedAfter(...stages))).toEqual({ activeStep: step, errorStep: step });
   });
@@ -172,6 +182,7 @@ describe("tabOf", () => {
     [ApplicationStatus.Applied, "active"],
     [ApplicationStatus.Screening, "active"],
     [ApplicationStatus.Interview, "active"],
+    [ApplicationStatus.Selected, "offers"],
     [ApplicationStatus.Offer, "offers"],
     [ApplicationStatus.OfferAccepted, "offers"],
     [ApplicationStatus.OfferDeclined, "closed"],
@@ -191,6 +202,14 @@ describe("nextStepOf for an open offer", () => {
   it("asks the candidate to check the inbox when the subject is not known", () => {
     expect(nextStepOf(application({ status: ApplicationStatus.Offer }), [])).toBe(
       "An offer has been sent to your email. Please check your inbox.",
+    );
+  });
+});
+
+describe("nextStepOf for a selected candidate", () => {
+  it("tells the candidate that the offer letter will be emailed", () => {
+    expect(nextStepOf(application({ status: ApplicationStatus.Selected }), [])).toBe(
+      "You have been selected for this position. The hiring team will email you your offer letter.",
     );
   });
 });
