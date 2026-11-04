@@ -272,8 +272,9 @@ public isolated function isOfferAccepted(string email, string applicationId, str
     return false;
 }
 
-# Checks the answer and passes it to the ATS for one of the caller's own applications, found through their email. The
-# ATS reply is returned as it is, so its refusals can be told to the candidate.
+# Checks the answer and passes it to the ATS with the caller's email, which the ATS compares with the application's own
+# and refuses with a 404 when they differ. The ATS reply is returned as it is, so its refusals can be told to the
+# candidate.
 public isolated function answerOffer(string email, string applicationId, OfferDecision answer,
         string[] requestedDocuments, string requestId) returns http:Response|error {
     string? problem = offerDecisionProblem(answer);
@@ -284,21 +285,17 @@ public isolated function answerOffer(string email, string applicationId, OfferDe
     if id is error {
         return failedReply(error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND), requestId);
     }
-    AtsHistoryEntry[] history = check candidateHistory(email, requestId);
-    foreach AtsHistoryEntry entry in history {
-        if entry.id == id && entry.status != CANDIDATE_STATUS_DELETED {
-            boolean declined = answer.decision == OFFER_STATUS_DECLINED;
-            json body = {
-                candidateEmail: email,
-                decision: answer.decision,
-                declineReason: declined ? (answer.declineReason ?: "").trim() : (),
-                declineReasonAdditional: declined ? (answer.declineReasonAdditional ?: "").trim() : (),
-                requestedDocuments
-            };
-            return postWithToken(string `/candidates/${entry.id}/offer/decision`, body, requestId);
-        }
-    }
-    return failedReply(error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND), requestId);
+    // The ATS compares the email with the application's own, and answers 404 when they differ, so the application does
+    // not need to be found here first.
+    boolean declined = answer.decision == OFFER_STATUS_DECLINED;
+    json body = {
+        candidateEmail: email,
+        decision: answer.decision,
+        declineReason: declined ? (answer.declineReason ?: "").trim() : (),
+        declineReasonAdditional: declined ? (answer.declineReasonAdditional ?: "").trim() : (),
+        requestedDocuments
+    };
+    return postWithToken(string `/candidates/${id}/offer/decision`, body, requestId);
 }
 
 isolated function saveProfile(string email, ProfileChanges changes, string requestId) returns CandidateProfile|error {
