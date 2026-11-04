@@ -115,7 +115,7 @@ isolated function applicationOf(AtsHistoryEntry entry) returns ApplicationSummar
         jobId: entry.vacancyId.toString(),
         jobTitle: entry.vacancyTitle ?: "",
         appliedDate: entry.createdOn ?: "",
-        updatedDate: entry.updatedOn ?: entry.createdOn ?: "",
+        updatedDate: entry.offerUpdatedAt ?: entry.updatedOn ?: entry.createdOn ?: "",
         status: applicationStatusOf(entry.status, entry.offerStatus)
     };
     string? expiryDate = entry.offerExpiryDate;

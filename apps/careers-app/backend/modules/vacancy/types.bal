@@ -71,6 +71,8 @@ type AtsHistoryEntry record {
     string? offerExpiryDate = ();
     # Subject of the email the offer was sent with.
     string? offerEmailSubject = ();
+    # When that offer was sent, and last changed by an answer or its expiry.
+    string? offerUpdatedAt = ();
 };
 
 type AtsHistoryResponse record {
@@ -152,7 +154,9 @@ public type ApplicationSummary record {|
     string jobId;
     string jobTitle;
     string appliedDate;
-    # When the application last changed, which is when it reached its current status.
+    # When the application last changed, which is when it reached its current status. Once an offer has been sent it is
+    # when the offer was sent or last changed, so it dates the Offer, Offer Accepted, Offer Declined and Offer Expired
+    # statuses.
     string updatedDate;
     string status;
     # The date the offer must be answered by, anywhere on Earth (yyyy-MM-dd). Set while the offer is open or after it

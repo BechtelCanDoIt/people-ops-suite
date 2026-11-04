@@ -289,7 +289,7 @@ function theOfferDeadlineIsShownOnlyWhileItMatters() {
 
     ApplicationSummary accepted = applicationOf(offeredEntry("ACCEPTED"));
     test:assertEquals(accepted?.offerExpiresOn, ());
-    test:assertEquals(accepted?.offerExpiresOn, ());
+    test:assertEquals(accepted?.offerEmailSubject, ());
 }
 
 @test:Config {}
@@ -302,4 +302,14 @@ function anOfferAnswerIsChecked() {
     test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Other"}), ());
     test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "x".padEnd(256, "x")}),
         "The reason is too long.");
+}
+
+@test:Config {}
+function theDateOfAnApplicationWithAnOfferIsTheDateOfTheOffer() {
+    AtsHistoryEntry entry = historyEntry(1, "HIRED");
+    entry.updatedOn = "2026-11-01 09:00:00";
+    test:assertEquals(applicationOf(entry).updatedDate, "2026-11-01 09:00:00");
+    entry.offerStatus = "ACCEPTED";
+    entry.offerUpdatedAt = "2026-11-05 14:30:00";
+    test:assertEquals(applicationOf(entry).updatedDate, "2026-11-05 14:30:00");
 }

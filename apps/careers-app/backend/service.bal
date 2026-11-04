@@ -142,7 +142,16 @@ service http:InterceptableService / on new http:Listener(9090, requestLimits = {
             requestId = requestId);
         match resp.statusCode {
             http:STATUS_BAD_REQUEST => {
-                return <http:BadRequest>{body: {message: "The answer was not accepted. Please check it and try again."}};
+                // The answer is checked here before it is sent, and that reply is plain text saying what is wrong. A
+                // refusal from the ATS is JSON and has no message for the candidate.
+                string|error problem = resp.getTextPayload();
+                boolean builtHere = resp.getContentType().startsWith("text/plain");
+                return <http:BadRequest>{
+                    body: {
+                        message: problem is string && builtHere ? problem
+                            : "The answer was not accepted. Please check it and try again."
+                    }
+                };
             }
             http:STATUS_NOT_FOUND => {
                 return <http:NotFound>{body: {message: "There is no offer to answer for this application."}};
