@@ -7,6 +7,9 @@ tokenUrl = "http://localhost:9098/token"
 clientId = "test-client"
 clientSecret = "test-secret"
 
+[careers_app.documents]
+documentsEnabled = true
+
 [careers_app.documents.storageConfig]
 baseUrl = "http://localhost:10000"
 container = "test-container"

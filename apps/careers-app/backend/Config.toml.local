@@ -17,12 +17,12 @@ issuer = ""
 audience = ""
 userInfoUrl = ""
 
-# Optional: how many days after it was made a submission can be changed; zero means it cannot be changed.
+# Optional: the onboarding documents step, closed until documentsEnabled is true. Its storage settings are needed only
+# then; the SAS token needs create, write and read permission.
 # [careers_app.documents]
-# editableDays = 0
-
-# Onboarding documents storage; the SAS token needs create, write and read permission.
-[careers_app.documents.storageConfig]
-baseUrl = ""
-container = ""
-sasToken = ""
+# documentsEnabled = false
+#
+# [careers_app.documents.storageConfig]
+# baseUrl = ""
+# container = ""
+# sasToken = ""

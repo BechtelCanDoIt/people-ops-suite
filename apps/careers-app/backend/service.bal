@@ -121,9 +121,13 @@ service http:InterceptableService / on new http:Listener(9090, requestLimits = {
         if caller !is jwt:CallerDetails {
             return caller;
         }
-        string[] requestedDocuments = from documents:DocumentSpec document in documents:REQUIRED_DOCUMENTS
-            where document.required
-            select document.label;
+        // The mail to the offers team lists the documents asked for, and lists none while the documents step is closed.
+        string[] requestedDocuments = [];
+        if documents:documentsEnabled {
+            requestedDocuments = from documents:DocumentSpec document in documents:REQUIRED_DOCUMENTS
+                where document.required
+                select document.label;
+        }
         http:Response|error resp = vacancy:answerOffer(caller.email, applicationId, answer, requestedDocuments, requestId);
         if resp is error {
             return candidateFailure(resp, "Failed to record your answer", requestId);
@@ -157,6 +161,9 @@ service http:InterceptableService / on new http:Listener(9090, requestLimits = {
     # can still change them and until when, and, when they have submitted, what they saved.
     resource function get applications/[string applicationId]/documents(http:RequestContext ctx)
             returns json|http:Unauthorized|http:Forbidden|http:NotFound|http:BadGateway|http:GatewayTimeout {
+        if !documents:documentsEnabled {
+            return <http:NotFound>{body: {message: "Not available"}};
+        }
         string requestId = types:requestIdOf(ctx);
         if !types:isValidNumericId(applicationId) {
             return <http:NotFound>{body: {message: "Application not found"}};
@@ -184,24 +191,32 @@ service http:InterceptableService / on new http:Listener(9090, requestLimits = {
     }
 
     # The documents asked for after an offer is accepted, and the limits each file must meet.
-    resource function get documents/requirements() returns json => {
-        documents: documents:REQUIRED_DOCUMENTS.toJson(),
-        maxFiles: documents:MAX_FILES,
-        maxFileBytes: documents:MAX_FILE_BYTES,
-        maxTotalBytes: documents:MAX_TOTAL_BYTES,
-        tshirtSizes: documents:TSHIRT_SIZES,
-        titles: documents:TITLES,
-        genders: documents:GENDERS,
-        civilStatuses: documents:CIVIL_STATUSES,
-        dependantRelationships: documents:DEPENDANT_RELATIONSHIPS,
-        maxDependants: documents:MAX_DEPENDANTS,
-        maxEmergencyContacts: documents:MAX_EMERGENCY_CONTACTS
-    };
+    resource function get documents/requirements() returns json|http:NotFound {
+        if !documents:documentsEnabled {
+            return <http:NotFound>{body: {message: "Not available"}};
+        }
+        return {
+            documents: documents:REQUIRED_DOCUMENTS.toJson(),
+            maxFiles: documents:MAX_FILES,
+            maxFileBytes: documents:MAX_FILE_BYTES,
+            maxTotalBytes: documents:MAX_TOTAL_BYTES,
+            tshirtSizes: documents:TSHIRT_SIZES,
+            titles: documents:TITLES,
+            genders: documents:GENDERS,
+            civilStatuses: documents:CIVIL_STATUSES,
+            dependantRelationships: documents:DEPENDANT_RELATIONSHIPS,
+            maxDependants: documents:MAX_DEPENDANTS,
+            maxEmergencyContacts: documents:MAX_EMERGENCY_CONTACTS
+        };
+    }
 
     # Stores the signed-in candidate's onboarding documents for one of their own applications whose offer is accepted.
     resource function post applications/[string applicationId]/documents(http:Request req, http:RequestContext ctx)
             returns http:Created|http:BadRequest|http:Unauthorized|http:Forbidden|http:NotFound|http:Conflict
                 |http:BadGateway|http:GatewayTimeout {
+        if !documents:documentsEnabled {
+            return <http:NotFound>{body: {message: "Not available"}};
+        }
         string requestId = types:requestIdOf(ctx);
         if !types:isValidNumericId(applicationId) {
             return <http:NotFound>{body: {message: "Application not found"}};
@@ -263,6 +278,9 @@ service http:InterceptableService / on new http:Listener(9090, requestLimits = {
     resource function put applications/[string applicationId]/documents(http:Request req, http:RequestContext ctx)
             returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:NotFound|http:Conflict
                 |http:BadGateway|http:GatewayTimeout {
+        if !documents:documentsEnabled {
+            return <http:NotFound>{body: {message: "Not available"}};
+        }
         string requestId = types:requestIdOf(ctx);
         if !types:isValidNumericId(applicationId) {
             return <http:NotFound>{body: {message: "Application not found"}};
