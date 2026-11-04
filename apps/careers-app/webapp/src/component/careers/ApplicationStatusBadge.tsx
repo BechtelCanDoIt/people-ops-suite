@@ -36,8 +36,11 @@ const statusConfig: Record<ApplicationStatus, { color: string }> = {
   [ApplicationStatus.Rejected]: { color: "#EF4444" },
 };
 
+// A status this version does not know, for example one the backend added later, shows in grey and does not break the page.
+const UNKNOWN_STATUS = { color: "#6B7280" };
+
 const ApplicationStatusBadge = ({ status, size = "small" }: Props) => {
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? UNKNOWN_STATUS;
   return (
     <Chip
       label={status}
