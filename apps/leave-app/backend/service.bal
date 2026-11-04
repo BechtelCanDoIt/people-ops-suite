@@ -1002,7 +1002,13 @@ service http:InterceptableService / on new http:Listener(9090,
                     jwt
             );
             if cancelledLeaveDetails.leaveType == database:SABBATICAL_LEAVE {
-                string? approverEmail = cancelledLeaveDetails.approverEmail;
+                string? approverEmail = nonBlankEmail(cancelledLeaveDetails.approverEmail);
+                // A sabbatical applied for before the lead was saved as its approver has none until it is decided,
+                // so its lead is looked up instead.
+                if approverEmail is () {
+                    employee:Employee & readonly|error applicant = employee:getEmployee(cancelledLeaveDetails.email);
+                    approverEmail = applicant is error ? () : nonBlankEmail(applicant.leadEmail);
+                }
                 // process cancellation for the sabbatical leaves
                 if approverEmail is () {
                     string errMsg = string `Approver email is not available for leave with ID: ${id}.`;

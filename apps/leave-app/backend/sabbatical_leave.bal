@@ -155,7 +155,10 @@ function processSabbaticalLeaveRequest(SabbaticalProcessPayload payload)
                 emailSubject: emailSubject,
                 emailRecipients: recipientsList,
                 isMorningLeave: (),
-                status: PENDING
+                status: PENDING,
+                // The lead decides the request, so they are its approver from the start. Cancelling it and the
+                // lead's own sabbatical report both look the approver up.
+                approverEmail
             };
 
             template = email:bindKeyValues(email:sabbaticalApplicationTemplate, {
