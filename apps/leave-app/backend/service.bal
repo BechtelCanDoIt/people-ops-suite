@@ -595,14 +595,14 @@ service http:InterceptableService / on new http:Listener(9090,
         }
     }
 
-    # Submit sick leave in France with its sick note, in one multipart request.
+    # Submit sick leave in France with its sick note, in one JSON request.
     #
-    # The `leave` part carries the leave as JSON, as for `POST /leaves`, and the `sickNote` part carries a PDF, JPG or
-    # PNG file of at most 5 MB. The leave and the encrypted note are saved in one transaction. Date previews
+    # `leave` carries the leave, as for `POST /leaves`, and `sickNote` carries a PDF, JPG or PNG file of at most 5 MB
+    # as base64 text. The leave and the encrypted note are saved in one transaction. Date previews
     # (`isValidationOnlyMode`) stay on `POST /leaves`.
     #
     # + ctx - HTTP request context
-    # + req - Multipart request with the `leave` and `sickNote` parts
+    # + req - JSON request with the leave and the sick note as base64 text
     # + return - Success response if the leave is submitted, otherwise an error response
     resource function post leaves/sick\-leave(http:RequestContext ctx, http:Request req)
         returns http:Ok|http:BadRequest|http:Unauthorized|http:PayloadTooLarge|http:InternalServerError {

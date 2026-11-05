@@ -248,7 +248,7 @@ GRANT SELECT, UPDATE ON <leave_db>.leave_attachments TO '<scheduler_user>'@'<hos
 | GET | `/employees/{email}/leave-entitlement` | Leave balance for a given employee |
 | POST | `/leaves` | Submit a leave request |
 | GET | `/leaves` | Get leave history |
-| POST | `/leaves/sick-leave` | Submit France sick leave with its sick note (multipart: `leave` JSON part and `sickNote` file) |
+| POST | `/leaves/sick-leave` | Submit France sick leave with its sick note (JSON: `leave` and `sickNote` as base64 text) |
 | GET | `/leaves/{id}/sick-note` | Download a sick note (the applicant or `sickNoteRoles` only; audited) |
 | GET | `/sick-notes` | List sick notes overlapping `startDate`–`endDate` (`sickNoteRoles` only) |
 | POST | `/leaves/{id}/{action}` | Lead approves or rejects; optional `{reason}` body, required for rejecting Other Authorized Leave |
@@ -274,6 +274,10 @@ applicant's current lead (HR entity service) is emailed a link (`otherAuthorized
 ## Sick Notes
 
 France sick leave requires a sick note (PDF, JPG or PNG, up to 5 MB), uploaded with the request.
+
+- **Upload**: the note is sent as base64 text in the JSON body, not as a multipart file. Cloudflare in front of
+  `apis.wso2.com` answers a request body carrying raw binary with a bot challenge (403, `cf-mitigated: challenge`,
+  no CORS header), which a browser request cannot pass.
 
 - **Encryption**: stored encrypted with AES-256-GCM in `leave_attachments`, using `sickNoteEncryptionKey`. Never
   attached to emails.

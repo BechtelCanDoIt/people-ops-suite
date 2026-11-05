@@ -15,12 +15,19 @@
 // under the License.
 
 import ballerina/crypto;
+import ballerina/io;
 import ballerina/lang.array;
 import ballerina/mime;
 import ballerina/random;
 
 # Largest sick note accepted, in bytes (5 MB).
 public const MAX_SICK_NOTE_BYTES = 5242880;
+
+# Message for a sick note over `MAX_SICK_NOTE_BYTES`.
+public const ERR_MSG_SICK_NOTE_TOO_LARGE = "The sick note must be at most 5 MB.";
+
+# Longest base64 text accepted for a sick note: the base64 length of a 5 MB file.
+public const MAX_SICK_NOTE_BASE64_LENGTH = (MAX_SICK_NOTE_BYTES + 2) / 3 * 4;
 
 # Content types accepted for a sick note.
 public final readonly & string[] SICK_NOTE_CONTENT_TYPES = [mime:APPLICATION_PDF, mime:IMAGE_JPEG, mime:IMAGE_PNG];
@@ -56,7 +63,7 @@ public isolated function detectContentType(byte[] content) returns string|error 
         return error("The sick note is empty.");
     }
     if content.length() > MAX_SICK_NOTE_BYTES {
-        return error("The sick note must be at most 5 MB.");
+        return error(ERR_MSG_SICK_NOTE_TOO_LARGE);
     }
     if startsWith(content, PDF_PREFIX) {
         return mime:APPLICATION_PDF;
@@ -68,6 +75,45 @@ public isolated function detectContentType(byte[] content) returns string|error 
         return mime:IMAGE_JPEG;
     }
     return error("Send the sick note as a PDF, JPG or PNG file.");
+}
+
+# Decode a sick note sent as base64 text. Text longer than a 5 MB file's base64 is refused before it is decoded. The
+# decoded size is checked too, as a file just over 5 MB can have base64 of the same length.
+#
+# + base64Note - The file as base64 text
+# + return - The file content, or an error whose message can be shown to the user
+public isolated function decodeNote(string base64Note) returns byte[]|error {
+    if base64Note.length() > MAX_SICK_NOTE_BASE64_LENGTH {
+        return error(ERR_MSG_SICK_NOTE_TOO_LARGE);
+    }
+    byte[]|error content = array:fromBase64(base64Note);
+    if content is error {
+        return error("The sick note could not be read from the request.");
+    }
+    if content.length() > MAX_SICK_NOTE_BYTES {
+        return error(ERR_MSG_SICK_NOTE_TOO_LARGE);
+    }
+    return content;
+}
+
+# Read a request body, stopping as soon as it passes the limit, so an oversized body is never held whole. A declared
+# length can be missing, and the listener's `maxEntityBodySize` does not apply to HTTP/2.
+#
+# + chunks - The body as it arrives
+# + maxBytes - Largest body allowed, in bytes
+# + return - The body, or an error once it passes `maxBytes` or if it could not be read
+public isolated function readUpTo(stream<byte[], io:Error?> chunks, int maxBytes) returns byte[]|error {
+    byte[] body = [];
+    while true {
+        record {|byte[] value;|}|io:Error? next = chunks.next();
+        if next !is record {|byte[] value;|} {
+            return next ?: body;
+        }
+        if body.length() + next.value.length() > maxBytes {
+            return error(string `The body is over ${maxBytes} bytes.`);
+        }
+        body.push(...next.value);
+    }
 }
 
 # Decode the base64 encryption key.

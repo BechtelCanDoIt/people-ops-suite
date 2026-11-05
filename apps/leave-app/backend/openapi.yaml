@@ -181,16 +181,16 @@ paths:
   /leaves/sick-leave:
     post:
       summary: |-
-        Submit sick leave in France with its sick note, in one multipart request.
+        Submit sick leave in France with its sick note, in one JSON request.
 
-        The `leave` part carries the leave as JSON, as for `POST /leaves`, and the `sickNote` part carries a PDF, JPG or
-        PNG file of at most 5 MB. The leave and the encrypted note are saved in one transaction. Date previews
+        `leave` carries the leave, as for `POST /leaves`, and `sickNote` carries a PDF, JPG or PNG file of at most 5 MB
+        as base64 text. The leave and the encrypted note are saved in one transaction. Date previews
         (`isValidationOnlyMode`) stay on `POST /leaves`.
       operationId: postLeavesSickLeave
       requestBody:
-        description: Multipart request with the `leave` and `sickNote` parts
+        description: The leave and the sick note as base64 text
         content:
-          multipart/form-data:
+          application/json:
             schema:
               required:
               - leave
@@ -201,11 +201,10 @@ paths:
                   $ref: '#/components/schemas/LeavePayload'
                 sickNote:
                   type: string
-                  description: PDF, JPG or PNG file of at most 5 MB. The server checks the file content
-                  format: binary
-            encoding:
-              leave:
-                contentType: application/json
+                  description: PDF, JPG or PNG file of at most 5 MB, as base64 text without a `data:` prefix. The server
+                    checks the file content
+                  format: byte
+              additionalProperties: false
         required: true
       responses:
         "200":
@@ -219,7 +218,8 @@ paths:
         "401":
           description: Unauthorized
         "413":
-          description: PayloadTooLarge. The request is, or declares, more than 6 MB (the 5 MB sick note plus 1 MB)
+          description: PayloadTooLarge. The request is, or declares, more than the base64 of a 5 MB sick note plus 1 MB
+            (about 7.7 MB)
         "500":
           description: InternalServerError
   /leaves/on-behalf:

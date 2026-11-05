@@ -17,6 +17,18 @@
 import ballerina/test;
 
 @test:Config {}
+function readUpToReturnsABodyUpToTheLimit() returns error? {
+    byte[][] parts = [[1, 2], [3, 4]];
+    test:assertEquals(check readUpTo(parts.toStream(), 4), <byte[]>[1, 2, 3, 4]);
+}
+
+@test:Config {}
+function readUpToRefusesABodyOverTheLimit() {
+    byte[][] parts = [[1, 2], [3, 4], [5]];
+    test:assertTrue(readUpTo(parts.toStream(), 4) is error);
+}
+
+@test:Config {}
 function contentDecidesTheType() {
     test:assertEquals(detectContentType([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31]), "application/pdf");
     test:assertEquals(detectContentType([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]), "image/png");
@@ -34,6 +46,41 @@ function emptyAndOversizedFilesAreRefused() {
     byte[] exactlyMax = [0x25, 0x50, 0x44, 0x46, 0x2D];
     exactlyMax.setLength(MAX_SICK_NOTE_BYTES);
     test:assertEquals(detectContentType(exactlyMax), "application/pdf");
+}
+
+@test:Config {}
+function base64NotesDecodeToTheFile() returns error? {
+    byte[] note = [0x25, 0x50, 0x44, 0x46, 0x2D, 0x00, 0xFF, 0x80];
+    test:assertEquals(check decodeNote(note.toBase64()), note);
+    byte[] empty = check decodeNote("");
+    test:assertEquals(empty.length(), 0);
+}
+
+@test:Config {}
+function unreadableBase64NotesAreRefused() {
+    string unreadable = "The sick note could not be read from the request.";
+    test:assertEquals((<error>decodeNote("not base64!")).message(), unreadable);
+    // The data URL prefix a browser's FileReader adds is not part of the file.
+    test:assertEquals((<error>decodeNote("data:application/pdf;base64,JVBERi0=")).message(), unreadable);
+}
+
+@test:Config {}
+function base64OfAFileOver5MbIsRefused() returns error? {
+    byte[] exactlyMax = [0x25, 0x50, 0x44, 0x46, 0x2D];
+    exactlyMax.setLength(MAX_SICK_NOTE_BYTES);
+    string atLimit = exactlyMax.toBase64();
+    test:assertEquals(atLimit.length(), MAX_SICK_NOTE_BASE64_LENGTH);
+    test:assertEquals((check decodeNote(atLimit)).length(), MAX_SICK_NOTE_BYTES);
+    string tooLarge = "The sick note must be at most 5 MB.";
+    // One byte over 5 MB has base64 of the same length, so only the decoded size catches it.
+    byte[] oneOver = exactlyMax.clone();
+    oneOver.setLength(MAX_SICK_NOTE_BYTES + 1);
+    test:assertEquals(oneOver.toBase64().length(), MAX_SICK_NOTE_BASE64_LENGTH);
+    test:assertEquals((<error>decodeNote(oneOver.toBase64())).message(), tooLarge);
+    // Longer text is refused before it is decoded.
+    byte[] wellOver = exactlyMax.clone();
+    wellOver.setLength(MAX_SICK_NOTE_BYTES + 3);
+    test:assertEquals((<error>decodeNote(wellOver.toBase64())).message(), tooLarge);
 }
 
 @test:Config {}
