@@ -17,6 +17,18 @@
 import ballerina/test;
 
 @test:Config {}
+function readUpToReturnsABodyUpToTheLimit() returns error? {
+    byte[][] parts = [[1, 2], [3, 4]];
+    test:assertEquals(check readUpTo(parts.toStream(), 4), <byte[]>[1, 2, 3, 4]);
+}
+
+@test:Config {}
+function readUpToRefusesABodyOverTheLimit() {
+    byte[][] parts = [[1, 2], [3, 4], [5]];
+    test:assertTrue(readUpTo(parts.toStream(), 4) is error);
+}
+
+@test:Config {}
 function contentDecidesTheType() {
     test:assertEquals(detectContentType([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31]), "application/pdf");
     test:assertEquals(detectContentType([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]), "image/png");

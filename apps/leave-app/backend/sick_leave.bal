@@ -20,6 +20,7 @@ import leave_service.policy;
 import leave_service.sick_note;
 
 import ballerina/http;
+import ballerina/io;
 import ballerina/lang.value;
 import ballerina/log;
 import ballerina/mime;
@@ -35,13 +36,13 @@ final byte[] & readonly sickNoteKey = check sick_note:decodeKey(sickNoteEncrypti
 const MAX_SICK_LEAVE_REQUEST_BYTES = sick_note:MAX_SICK_NOTE_BASE64_LENGTH + 1048576;
 
 const ERR_MSG_SUBMIT_LEAVE_FAILED = "Error occurred while submitting a leave";
-const ERR_MSG_SICK_NOTE_TOO_LARGE = "The sick note must be at most 5 MB.";
 const ERR_MSG_SICK_NOTE_NOT_FOUND = "No sick note was found for this leave.";
 const ERR_MSG_SICK_NOTE_UNREADABLE = "The sick note could not be read.";
 const ERR_MSG_SICK_NOTE_FETCH_FAILED = "Error occurred while fetching the sick note";
 
-# Refuse a sick leave request that declares a length over the limit, before any of its body is read. A body sent in
-# chunks declares no length and is not refused here: the listener's `maxEntityBodySize` still bounds it.
+# Refuse a sick leave request that declares a length over the limit, before any of its body is read. A body that
+# declares no length is not refused here: `readSickLeaveRequest` counts its bytes as they are read, which also covers
+# HTTP/2, where the listener's `maxEntityBodySize` does not apply.
 #
 # + req - Sick leave request
 # + return - PayloadTooLarge if the declared length is over `MAX_SICK_LEAVE_REQUEST_BYTES`, otherwise nil
@@ -51,7 +52,7 @@ function checkSickLeaveRequestSize(http:Request req) returns http:PayloadTooLarg
     if length is int && length > MAX_SICK_LEAVE_REQUEST_BYTES {
         return <http:PayloadTooLarge>{
             body: {
-                message: ERR_MSG_SICK_NOTE_TOO_LARGE
+                message: sick_note:ERR_MSG_SICK_NOTE_TOO_LARGE
             }
         };
     }
@@ -140,11 +141,20 @@ function submitSickLeave(http:Request req, string email, string jwt)
 # as text in JSON, not as a multipart file, because Cloudflare in front of the API gateway challenges request bodies
 # that carry raw binary, and a browser request cannot answer that challenge.
 #
+# The body is read through `sick_note:readUpTo`, so one over `MAX_SICK_LEAVE_REQUEST_BYTES` stops being read once it
+# passes the limit, whatever its declared length or HTTP version.
+#
 # + req - JSON request
 # + return - The leave and the decoded sick note file, or an error whose message can be shown to the user
 function readSickLeaveRequest(http:Request req) returns SickLeaveSubmission|error {
-    json|http:ClientError body = req.getJsonPayload();
-    if body is http:ClientError {
+    stream<byte[], io:Error?>|http:ClientError chunks = req.getByteStream();
+    byte[]|error bytes = chunks is http:ClientError ? chunks : sick_note:readUpTo(chunks, MAX_SICK_LEAVE_REQUEST_BYTES);
+    if bytes is error {
+        return error("The request could not be read.", bytes);
+    }
+    string|error text = string:fromBytes(bytes);
+    json|error body = text is string ? text.fromJsonString() : text;
+    if body is error {
         return error("Send the leave and the sick note as JSON.", body);
     }
     SickLeaveRequest|error request = value:fromJsonWithType(body);
