@@ -129,6 +129,14 @@ isolated function patchWithToken(string path, AtsCandidateUpdate payload, string
     });
 }
 
+# POST to the ATS with automatic token refresh on 401.
+isolated function postWithToken(string path, json payload, string requestId) returns http:Response|error {
+    final readonly & json body = payload.cloneReadOnly();
+    return withToken(isolated function(string token) returns http:Response|error {
+        return atsHttpClient->post(path, body, authHeaders(token, requestId));
+    });
+}
+
 // The JSON of a 200 reply; any other status becomes an UpstreamError.
 isolated function atsJson(string path, string requestId) returns json|error {
     http:Response resp = check getWithToken(path, requestId);
@@ -188,6 +196,16 @@ isolated function profileFor(string email, string requestId) returns CandidatePr
     return profile;
 }
 
+// The caller's own application with that id, found in their history; nothing when it is not theirs.
+isolated function ownApplication(AtsHistoryEntry[] history, int id) returns AtsHistoryEntry? {
+    foreach AtsHistoryEntry entry in history {
+        if entry.id == id {
+            return entry;
+        }
+    }
+    return ();
+}
+
 # The candidate's full name, first and last name as saved in their profile, when the application is one of their own
 # and its offer is accepted; nothing otherwise. One read of the history answers both.
 public isolated function acceptedApplicantName(string email, string applicationId, string requestId)
@@ -197,16 +215,12 @@ public isolated function acceptedApplicantName(string email, string applicationI
         return ();
     }
     AtsHistoryEntry[] history = check candidateHistory(email, requestId);
-    foreach AtsHistoryEntry entry in history {
-        if entry.id == id {
-            CandidateProfile? profile = profileOf(history, email);
-            if entry.status != CANDIDATE_STATUS_HIRED || profile is () {
-                return ();
-            }
-            return string:'join(" ", profile.firstName, profile.lastName).trim();
-        }
+    AtsHistoryEntry? entry = ownApplication(history, id);
+    CandidateProfile? profile = profileOf(history, email);
+    if entry is () || entry.offerStatus != OFFER_STATUS_ACCEPTED || profile is () {
+        return ();
     }
-    return ();
+    return string:'join(" ", profile.firstName, profile.lastName).trim();
 }
 
 isolated function profileReplyOf(CandidateProfile|error profile, string requestId) returns http:Response|error =>
@@ -229,16 +243,14 @@ isolated function interviewsFor(string email, string applicationId, string reque
     if id is error {
         return error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND);
     }
-    AtsHistoryEntry[] history = check candidateHistory(email, requestId);
-    foreach AtsHistoryEntry entry in history {
-        if entry.id == id && entry.status != CANDIDATE_STATUS_DELETED {
-            json body = check atsJson(string `/interviews?status=SCHEDULED&status=COMPLETED&status=WITHDRAWN&candidateVacancyId=${entry.id}&limit=${MAX_INTERVIEWS}`,
-                requestId);
-            AtsInterviewResponse reply = check body.fromJsonWithType();
-            return interviewsOf(reply.interviews);
-        }
+    AtsHistoryEntry? entry = ownApplication(check candidateHistory(email, requestId), id);
+    if entry is () || entry.status == CANDIDATE_STATUS_DELETED {
+        return error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND);
     }
-    return error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND);
+    json body = check atsJson(string `/interviews?status=SCHEDULED&status=COMPLETED&status=WITHDRAWN&candidateVacancyId=${entry.id}&limit=${MAX_INTERVIEWS}`,
+        requestId);
+    AtsInterviewResponse reply = check body.fromJsonWithType();
+    return interviewsOf(reply.interviews);
 }
 
 # The interviews of one of the caller's own applications; a 404 reply when it is not theirs.
@@ -255,13 +267,34 @@ public isolated function isOfferAccepted(string email, string applicationId, str
     if id is error {
         return false;
     }
-    AtsHistoryEntry[] history = check candidateHistory(email, requestId);
-    foreach AtsHistoryEntry entry in history {
-        if entry.id == id {
-            return entry.status == CANDIDATE_STATUS_HIRED;
-        }
+    AtsHistoryEntry? entry = ownApplication(check candidateHistory(email, requestId), id);
+    return entry is AtsHistoryEntry && entry.offerStatus == OFFER_STATUS_ACCEPTED;
+}
+
+# Checks the answer and passes it to the ATS with the caller's email, which the ATS compares with the application's own
+# and refuses with a 404 when they differ. The ATS reply is returned as it is, so its refusals can be told to the
+# candidate.
+public isolated function answerOffer(string email, string applicationId, OfferDecision answer,
+        string[] requestedDocuments, string requestId) returns http:Response|error {
+    string? problem = offerDecisionProblem(answer);
+    if problem is string {
+        return failedReply(error UpstreamError(problem, status = http:STATUS_BAD_REQUEST), requestId);
     }
-    return false;
+    int|error id = int:fromString(applicationId);
+    if id is error {
+        return failedReply(error UpstreamError("Application not found", status = http:STATUS_NOT_FOUND), requestId);
+    }
+    // The ATS compares the email with the application's own, and answers 404 when they differ, so the application does
+    // not need to be found here first.
+    boolean declined = answer.decision == OFFER_STATUS_DECLINED;
+    json body = {
+        candidateEmail: email,
+        decision: answer.decision,
+        declineReason: declined ? (answer.declineReason ?: "").trim() : (),
+        declineReasonAdditional: declined ? (answer.declineReasonAdditional ?: "").trim() : (),
+        requestedDocuments
+    };
+    return postWithToken(string `/candidates/${id}/offer/decision`, body, requestId);
 }
 
 isolated function saveProfile(string email, ProfileChanges changes, string requestId) returns CandidateProfile|error {

@@ -25,6 +25,14 @@ public type AtsConfig record {|
 const CANDIDATE_STATUS_DELETED = "DELETED";
 const CANDIDATE_STATUS_HIRED = "HIRED";
 
+const OFFER_STATUS_OFFER_SENT = "OFFER_SENT";
+const OFFER_STATUS_ACCEPTED = "ACCEPTED";
+const OFFER_STATUS_DECLINED = "DECLINED";
+const OFFER_STATUS_EXPIRED = "EXPIRED";
+
+const MAX_DECLINE_REASON_LENGTH = 255;
+const MAX_DECLINE_FEEDBACK_LENGTH = 1000;
+
 const MAX_NAME_LENGTH = 100;
 const MAX_ADDRESS_LENGTH = 300;
 const MAX_UNIVERSITY_LENGTH = 255;
@@ -57,6 +65,14 @@ type AtsHistoryEntry record {
     string? university = ();
     string? createdOn = ();
     string? updatedOn = ();
+    # Status of the latest offer of the application, if it has one.
+    string? offerStatus = ();
+    # Expiry date of that offer as the offer letter states it, yyyy-MM-dd.
+    string? offerExpiryDate = ();
+    # Subject of the email the offer was sent with.
+    string? offerEmailSubject = ();
+    # When that offer was sent, and last changed by an answer or its expiry.
+    string? offerUpdatedAt = ();
 };
 
 type AtsHistoryResponse record {
@@ -138,9 +154,26 @@ public type ApplicationSummary record {|
     string jobId;
     string jobTitle;
     string appliedDate;
-    # When the application last changed, which is when it reached its current status.
+    # When the application last changed, which is when it reached its current status. Once an offer has been sent it is
+    # when the offer was sent or last changed, so it dates the Offer, Offer Accepted, Offer Declined and Offer Expired
+    # statuses.
     string updatedDate;
     string status;
+    # The date the offer must be answered by, anywhere on Earth (yyyy-MM-dd). Set while the offer is open or after it
+    # expired.
+    string offerExpiresOn?;
+    # The subject of the offer email, so the candidate can find it. Set only while the offer is open.
+    string offerEmailSubject?;
+|};
+
+# A candidate's answer to an offer.
+public type OfferDecision record {|
+    # ACCEPTED or DECLINED
+    string decision;
+    # The reason for declining, required for a decline
+    string declineReason?;
+    # Optional feedback for a decline
+    string declineReasonAdditional?;
 |};
 
 type TokenResponse record {

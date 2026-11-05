@@ -48,7 +48,7 @@ function atsStatusesAreShownAsTheWebAppNamesThem() {
     test:assertEquals(applicationStatusOf("SHORTLISTED"), "Screening");
     test:assertEquals(applicationStatusOf("INTERVIEW_IN_PROGRESS"), "Interview");
     test:assertEquals(applicationStatusOf("INTERVIEW_COMPLETED"), "Interview");
-    test:assertEquals(applicationStatusOf("HIRED"), "Offer Accepted");
+    test:assertEquals(applicationStatusOf("HIRED"), "Selected");
     test:assertEquals(applicationStatusOf("REJECTED"), "Rejected");
     test:assertEquals(applicationStatusOf("NOT_SHORTLISTED"), "Rejected");
     test:assertEquals(applicationStatusOf("VACANCY_CLOSED"), "Applied");
@@ -61,7 +61,7 @@ function applicationsAreNewestFirstWithoutDeletedOnes() {
     ApplicationSummary[] applications = applicationsOf(history);
     test:assertEquals(applications.length(), 2);
     test:assertEquals(applications[0].id, "2");
-    test:assertEquals(applications[0].status, "Offer Accepted");
+    test:assertEquals(applications[0].status, "Selected");
     test:assertEquals(applications[1].id, "1");
     test:assertEquals(applications[1].jobId, "7");
     test:assertEquals(applications[1].jobTitle, "Engineer");
@@ -258,4 +258,67 @@ function interviewsAreListedInTheOrderTheyTakePlace() {
         {id: 1, status: "COMPLETED", startTime: "2026-11-02T10:00:00"}
     ]);
     test:assertEquals(shown.map(interview => interview.id), ["1", "2"]);
+}
+
+@test:Config {}
+function anOfferStatusReplacesTheApplicationStatus() {
+    test:assertEquals(applicationStatusOf("HIRED", "OFFER_SENT"), "Offer");
+    test:assertEquals(applicationStatusOf("HIRED", "ACCEPTED"), "Offer Accepted");
+    test:assertEquals(applicationStatusOf("HIRED", "DECLINED"), "Offer Declined");
+    test:assertEquals(applicationStatusOf("HIRED", "EXPIRED"), "Offer Expired");
+    test:assertEquals(applicationStatusOf("REJECTED", ()), "Rejected");
+}
+
+function offeredEntry(string offerStatus) returns AtsHistoryEntry {
+    AtsHistoryEntry entry = historyEntry(1, "HIRED");
+    entry.offerStatus = offerStatus;
+    entry.offerExpiryDate = "2026-11-12";
+    entry.offerEmailSubject = "Offer letter";
+    return entry;
+}
+
+@test:Config {}
+function theOfferDeadlineIsShownOnlyWhileItMatters() {
+    ApplicationSummary open = applicationOf(offeredEntry("OFFER_SENT"));
+    test:assertEquals(open?.offerExpiresOn, "2026-11-12");
+    test:assertEquals(open?.offerEmailSubject, "Offer letter");
+
+    ApplicationSummary expired = applicationOf(offeredEntry("EXPIRED"));
+    test:assertEquals(expired?.offerExpiresOn, "2026-11-12");
+    test:assertEquals(expired?.offerEmailSubject, ());
+
+    ApplicationSummary accepted = applicationOf(offeredEntry("ACCEPTED"));
+    test:assertEquals(accepted?.offerExpiresOn, ());
+    test:assertEquals(accepted?.offerEmailSubject, ());
+}
+
+@test:Config {}
+function anOfferAnswerIsChecked() {
+    test:assertEquals(offerDecisionProblem({decision: "ACCEPTED"}), ());
+    test:assertEquals(offerDecisionProblem({decision: "MAYBE"}), "The decision must be ACCEPTED or DECLINED.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Compensation"}), ());
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED"}), "Choose a reason for declining.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "   "}), "Choose a reason for declining.");
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "Other"}), ());
+    test:assertEquals(offerDecisionProblem({decision: "DECLINED", declineReason: "x".padEnd(256, "x")}),
+        "The reason is too long.");
+}
+
+@test:Config {}
+function theDateOfAnApplicationWithAnOfferIsTheDateOfTheOffer() {
+    AtsHistoryEntry entry = historyEntry(1, "HIRED");
+    entry.updatedOn = "2026-11-01 09:00:00";
+    test:assertEquals(applicationOf(entry).updatedDate, "2026-11-01 09:00:00");
+    entry.offerStatus = "ACCEPTED";
+    entry.offerUpdatedAt = "2026-11-05 14:30:00";
+    test:assertEquals(applicationOf(entry).updatedDate, "2026-11-05 14:30:00");
+}
+
+@test:Config {}
+function aCandidateFindsOnlyTheirOwnApplicationById() {
+    AtsHistoryEntry[] history = [historyEntry(1), historyEntry(2, "HIRED"), historyEntry(3, "DELETED")];
+    test:assertEquals(ownApplication(history, 2)?.status, "HIRED");
+    test:assertEquals(ownApplication(history, 3)?.status, "DELETED");
+    test:assertEquals(ownApplication(history, 99), ());
+    test:assertEquals(ownApplication([], 1), ());
 }
