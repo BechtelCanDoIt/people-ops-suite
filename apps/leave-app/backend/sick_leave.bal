@@ -30,22 +30,12 @@ configurable string sickNoteEncryptionKey = ?;
 # The decoded sick note key. A key that is not base64 of exactly 32 bytes stops the service from starting.
 final byte[] & readonly sickNoteKey = check sick_note:decodeKey(sickNoteEncryptionKey).cloneReadOnly();
 
-# Name of the multipart part that carries the leave as JSON.
-const LEAVE_PART = "leave";
-
-# Name of the multipart part that carries the sick note file.
-const SICK_NOTE_PART = "sickNote";
-
-# Largest sick leave request accepted, in bytes: the largest sick note plus 1 MB for the leave and the multipart
-# framing. It is also the listener's body limit, as every other endpoint takes a small JSON body.
-const MAX_SICK_LEAVE_REQUEST_BYTES = sick_note:MAX_SICK_NOTE_BYTES + 1048576;
-
-# Largest `leave` part accepted, in bytes.
-const MAX_LEAVE_PART_BYTES = 65536;
+# Largest sick leave request accepted, in bytes: the base64 of the largest sick note plus 1 MB for the leave. It is
+# also the listener's body limit, as every other endpoint takes a small JSON body.
+const MAX_SICK_LEAVE_REQUEST_BYTES = sick_note:MAX_SICK_NOTE_BASE64_LENGTH + 1048576;
 
 const ERR_MSG_SUBMIT_LEAVE_FAILED = "Error occurred while submitting a leave";
 const ERR_MSG_SICK_NOTE_TOO_LARGE = "The sick note must be at most 5 MB.";
-const ERR_MSG_SICK_LEAVE_PARTS = "The request must contain exactly one leave part and one sickNote part.";
 const ERR_MSG_SICK_NOTE_NOT_FOUND = "No sick note was found for this leave.";
 const ERR_MSG_SICK_NOTE_UNREADABLE = "The sick note could not be read.";
 const ERR_MSG_SICK_NOTE_FETCH_FAILED = "Error occurred while fetching the sick note";
@@ -72,7 +62,7 @@ function checkSickLeaveRequestSize(http:Request req) returns http:PayloadTooLarg
 # transaction; the leave then goes through the same submission as `POST /leaves`. The note is never sent by email or
 # added to the calendar event.
 #
-# + req - Multipart request with the `leave` and `sickNote` parts
+# + req - JSON request with the leave and the sick note as base64 text
 # + email - Email of the applicant
 # + jwt - JWT token of the applicant
 # + return - Ok when the leave is submitted, BadRequest for an invalid leave or sick note, otherwise
@@ -80,7 +70,7 @@ function checkSickLeaveRequestSize(http:Request req) returns http:PayloadTooLarg
 function submitSickLeave(http:Request req, string email, string jwt)
     returns http:Ok|http:BadRequest|http:InternalServerError {
 
-    SickLeaveSubmission|error submission = readSickLeaveParts(req);
+    SickLeaveSubmission|error submission = readSickLeaveRequest(req);
     if submission is error {
         log:printWarn("Sick leave request refused", employee = email, reason = submission.message());
         return <http:BadRequest>{
@@ -146,70 +136,23 @@ function submitSickLeave(http:Request req, string email, string jwt)
     return result;
 }
 
-# Read the `leave` and `sickNote` parts of a multipart sick leave request. A repeated or unknown part is refused, and
-# a part that declares a size over its limit is refused before it is read.
+# Read a sick leave request: the leave, as sent to `POST /leaves`, and the sick note as base64 text. The note is sent
+# as text in JSON, not as a multipart file, because Cloudflare in front of the API gateway challenges request bodies
+# that carry raw binary, and a browser request cannot answer that challenge.
 #
-# + req - Multipart request
-# + return - The leave and the sick note file, or an error whose message can be shown to the user
-function readSickLeaveParts(http:Request req) returns SickLeaveSubmission|error {
-    mime:Entity[]|http:ClientError parts = req.getBodyParts();
-    if parts is http:ClientError {
-        return error("Send the leave and the sick note as multipart/form-data.", parts);
+# + req - JSON request
+# + return - The leave and the decoded sick note file, or an error whose message can be shown to the user
+function readSickLeaveRequest(http:Request req) returns SickLeaveSubmission|error {
+    json|http:ClientError body = req.getJsonPayload();
+    if body is http:ClientError {
+        return error("Send the leave and the sick note as JSON.", body);
     }
-    if parts.length() > 2 {
-        return error(ERR_MSG_SICK_LEAVE_PARTS);
+    SickLeaveRequest|error request = value:fromJsonWithType(body);
+    if request is error {
+        return error("The request must contain a valid leave and the sick note.", request);
     }
-    LeavePayload? leave = ();
-    byte[]? sickNote = ();
-    foreach mime:Entity part in parts {
-        string partName = part.getContentDisposition().name;
-        if partName == LEAVE_PART && leave is () {
-            if declaresMoreThan(part, MAX_LEAVE_PART_BYTES) {
-                return error("The leave part is too large.");
-            }
-            LeavePayload|error leavePart = readLeavePart(part);
-            if leavePart is error {
-                return error("The leave part is not a valid leave.", leavePart);
-            }
-            leave = leavePart;
-        } else if partName == SICK_NOTE_PART && sickNote is () {
-            if declaresMoreThan(part, sick_note:MAX_SICK_NOTE_BYTES) {
-                return error(ERR_MSG_SICK_NOTE_TOO_LARGE);
-            }
-            byte[]|mime:ParserError sickNotePart = part.getByteArray();
-            if sickNotePart is mime:ParserError {
-                return error("The sick note could not be read from the request.", sickNotePart);
-            }
-            sickNote = sickNotePart;
-        } else {
-            return error(ERR_MSG_SICK_LEAVE_PARTS);
-        }
-    }
-    if leave is () {
-        return error("The leave part is missing.");
-    }
-    // A missing sick note is reported by `sick_note:detectContentType` as an empty one.
-    return {leave, sickNote: sickNote ?: []};
-}
-
-# Check whether a multipart part declares a size over the given limit. A part that declares no size is not refused
-# here; the request's own size limit still bounds it.
-#
-# + part - Multipart part
-# + maxBytes - Largest size allowed, in bytes
-# + return - `true` if the part's `Content-Length` header is over `maxBytes`
-function declaresMoreThan(mime:Entity part, int maxBytes) returns boolean {
-    int|error declared = part.getContentLength();
-    return declared is int && declared > maxBytes;
-}
-
-# Read the leave from the `leave` part, which carries the same JSON as the `POST /leaves` body.
-#
-# + part - The `leave` part
-# + return - The leave, or an error if the part is not a valid leave
-function readLeavePart(mime:Entity part) returns LeavePayload|error {
-    byte[] content = check part.getByteArray();
-    return value:fromJsonStringWithType(check string:fromBytes(content));
+    byte[] sickNote = check sick_note:decodeNote(request.sickNote);
+    return {leave: request.leave, sickNote};
 }
 
 # Send a sick note to the applicant or a member of `sickNoteRoles`. Access is checked from the note's details before

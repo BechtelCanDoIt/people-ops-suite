@@ -150,11 +150,19 @@ public type LeavePayload record {|
     *database:LeavePayload;
 |};
 
-# Leave and sick note sent together to submit sick leave in France.
+# Body of `POST /leaves/sick-leave`: the leave and its sick note, sent together to submit sick leave in France.
+type SickLeaveRequest record {|
+    # The leave, as sent to `POST /leaves`
+    LeavePayload leave;
+    # The sick note file (PDF, JPG or PNG) as base64 text, without a `data:` prefix
+    string sickNote;
+|};
+
+# A sick leave request once its sick note is decoded.
 type SickLeaveSubmission record {|
     # The leave, as sent to `POST /leaves`
     LeavePayload leave;
-    # The sick note file. Empty when the request has no sick note part
+    # The sick note file. Empty when the request sends an empty sick note
     byte[] sickNote;
 |};
 

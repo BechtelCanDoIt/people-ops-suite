@@ -22,6 +22,9 @@ import ballerina/random;
 # Largest sick note accepted, in bytes (5 MB).
 public const MAX_SICK_NOTE_BYTES = 5242880;
 
+# Longest base64 text accepted for a sick note: the base64 length of a 5 MB file.
+public const MAX_SICK_NOTE_BASE64_LENGTH = (MAX_SICK_NOTE_BYTES + 2) / 3 * 4;
+
 # Content types accepted for a sick note.
 public final readonly & string[] SICK_NOTE_CONTENT_TYPES = [mime:APPLICATION_PDF, mime:IMAGE_JPEG, mime:IMAGE_PNG];
 
@@ -68,6 +71,26 @@ public isolated function detectContentType(byte[] content) returns string|error 
         return mime:IMAGE_JPEG;
     }
     return error("Send the sick note as a PDF, JPG or PNG file.");
+}
+
+# Decode a sick note sent as base64 text. Text longer than a 5 MB file's base64 is refused before it is decoded. The
+# decoded size is checked too, as a file just over 5 MB can have base64 of the same length.
+#
+# + base64Note - The file as base64 text
+# + return - The file content, or an error whose message can be shown to the user
+public isolated function decodeNote(string base64Note) returns byte[]|error {
+    string tooLarge = "The sick note must be at most 5 MB.";
+    if base64Note.length() > MAX_SICK_NOTE_BASE64_LENGTH {
+        return error(tooLarge);
+    }
+    byte[]|error content = array:fromBase64(base64Note);
+    if content is error {
+        return error("The sick note could not be read from the request.");
+    }
+    if content.length() > MAX_SICK_NOTE_BYTES {
+        return error(tooLarge);
+    }
+    return content;
 }
 
 # Decode the base64 encryption key.
