@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from "react-router-dom";
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation, useParams } from "react-router-dom";
 
 import { useEffect, useMemo } from "react";
 
@@ -22,6 +22,7 @@ import AppShell from "@component/common/AppShell";
 import NotFoundPage from "@component/common/NotFoundPage";
 import PreLoader from "@component/common/PreLoader";
 import { CareersSiteUrl } from "@config/config";
+import { DOCUMENTS_SUBMISSION_ENABLED } from "@config/constant";
 import { useAppAuthContext } from "@context/AuthContext";
 import { hasSignInError } from "@utils/profileService";
 import type { RouteHandle } from "@utils/routeData";
@@ -52,6 +53,12 @@ const CareersSiteRedirect = () => {
   }, []);
 
   return <PreLoader isLoading message="Taking you to the careers page ..." />;
+};
+
+// While the documents step is closed, an address that opens it goes back to the application.
+const DocumentsNotOpen = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/applications/${id}`} replace />;
 };
 
 const AppHandler = () => {
@@ -86,8 +93,11 @@ const AppHandler = () => {
                 },
                 {
                   path: "/applications/:id/documents",
-                  element: <View.documents />,
-                  handle: { needs: ["applications", "profile"] } satisfies RouteHandle,
+                  element: DOCUMENTS_SUBMISSION_ENABLED ? <View.documents /> : <DocumentsNotOpen />,
+                  // While the step is closed the route only redirects, so it declares no needs of its own.
+                  handle: {
+                    needs: DOCUMENTS_SUBMISSION_ENABLED ? ["applications", "profile"] : [],
+                  } satisfies RouteHandle,
                 },
               ],
             },

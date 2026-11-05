@@ -22,11 +22,13 @@ import { pillButtonSx } from "@utils/styles";
 
 interface WelcomeDialogProps {
   jobTitle: string;
-  onSubmitDocuments: () => void;
+  // Opens the page for the onboarding documents; not given while that step is closed.
+  onSubmitDocuments?: () => void;
   onClose: () => void;
 }
 
-// Congratulates a candidate who has accepted an offer and offers to open the page for their onboarding documents.
+// Congratulates a candidate who has accepted an offer and, when the documents step is open, offers to open the page for
+// their onboarding documents.
 const WelcomeDialog = ({ jobTitle, onSubmitDocuments, onClose }: WelcomeDialogProps) => (
   <StatusDialog
     open
@@ -35,19 +37,26 @@ const WelcomeDialog = ({ jobTitle, onSubmitDocuments, onClose }: WelcomeDialogPr
     icon={<Check size={32} strokeWidth={3} />}
     title="Welcome to the WSO2 family!"
     actions={
-      <>
-        <Button onClick={onClose} sx={{ fontWeight: 600 }}>
-          Later
+      onSubmitDocuments ? (
+        <>
+          <Button onClick={onClose} sx={{ fontWeight: 600 }}>
+            Later
+          </Button>
+          <Button variant="contained" onClick={onSubmitDocuments} sx={{ ...pillButtonSx, px: 3 }}>
+            Submit documents
+          </Button>
+        </>
+      ) : (
+        <Button variant="contained" onClick={onClose} sx={{ ...pillButtonSx, px: 3 }}>
+          Close
         </Button>
-        <Button variant="contained" onClick={onSubmitDocuments} sx={{ ...pillButtonSx, px: 3 }}>
-          Submit documents
-        </Button>
-      </>
+      )
     }
   >
     <Typography fontSize="0.95rem" color="text.primary">
-      Congratulations on joining WSO2 as {jobTitle}. Please submit the documents we need to complete your onboarding.
-      The hiring team will contact you with the next steps.
+      Congratulations on joining WSO2 as {jobTitle}.
+      {onSubmitDocuments && " Please submit the documents we need to complete your onboarding."} The hiring team will
+      contact you with the next steps.
     </Typography>
   </StatusDialog>
 );

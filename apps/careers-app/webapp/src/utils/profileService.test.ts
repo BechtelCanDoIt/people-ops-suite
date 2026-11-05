@@ -13,7 +13,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
 import axios from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,24 +23,36 @@ import {
   forcedSignOutRecently,
   hasSignInError,
   noteForcedSignOut,
+  respondToOffer,
   setTokenRenewer,
 } from "@utils/profileService";
 
 // The service reads the app's config when it loads, which needs a browser window.
 vi.mock("@config/config", () => ({
-  AppConfig: { serviceUrls: { candidates: "/candidates", applications: "/applications", documents: "/documents" } },
+  AppConfig: {
+    serviceUrls: {
+      candidates: "/candidates",
+      applications: "/applications",
+      documents: "/documents",
+    },
+  },
 }));
 vi.mock("axios", () => ({
   default: {
     get: vi.fn(),
+    post: vi.fn(),
     isAxiosError: (error: unknown) => Boolean((error as { isAxiosError?: boolean }).isAxiosError),
   },
 }));
 
 const get = vi.mocked(axios.get);
-const refused = () => Object.assign(new Error("401"), { isAxiosError: true, response: { status: 401 } });
-const serverError = () => Object.assign(new Error("500"), { isAxiosError: true, response: { status: 500 } });
-const bearer = (token: string) => expect.objectContaining({ headers: { Authorization: `Bearer ${token}` } });
+const post = vi.mocked(axios.post);
+const refused = () =>
+  Object.assign(new Error("401"), { isAxiosError: true, response: { status: 401 } });
+const serverError = () =>
+  Object.assign(new Error("500"), { isAxiosError: true, response: { status: 500 } });
+const bearer = (token: string) =>
+  expect.objectContaining({ headers: { Authorization: `Bearer ${token}` } });
 
 describe("a request whose token was refused", () => {
   beforeEach(() => {
@@ -172,5 +183,65 @@ describe("an error from the identity provider on the address", () => {
     expect(hasSignInError("")).toBe(false);
     expect(hasSignInError("?email=a%40b.c")).toBe(false);
     expect(hasSignInError("?code=abc&state=xyz")).toBe(false);
+  });
+});
+
+describe("an answer to an offer", () => {
+  const failure = (status: number, data?: unknown) =>
+    Object.assign(new Error(String(status)), { isAxiosError: true, response: { status, data } });
+
+  beforeEach(() => {
+    post.mockReset();
+    post.mockResolvedValue({ data: undefined });
+  });
+
+  it("sends an acceptance to the decision address", async () => {
+    await respondToOffer("token", "a 1", { response: "accepted" });
+    expect(post).toHaveBeenCalledWith(
+      "/applications/a%201/offer/decision",
+      { decision: "ACCEPTED" },
+      bearer("token"),
+    );
+  });
+
+  it("sends a decline with its reason and the additional reason", async () => {
+    await respondToOffer("token", "a1", {
+      response: "declined",
+      reason: "Compensation",
+      comment: "Too low",
+    });
+    expect(post).toHaveBeenCalledWith(
+      "/applications/a1/offer/decision",
+      { decision: "DECLINED", declineReason: "Compensation", declineReasonAdditional: "Too low" },
+      bearer("token"),
+    );
+  });
+
+  it("leaves out an empty additional reason", async () => {
+    await respondToOffer("token", "a1", { response: "declined", reason: "Other", comment: "" });
+    expect(post.mock.calls[0][1]).toEqual({
+      decision: "DECLINED",
+      declineReason: "Other",
+      declineReasonAdditional: undefined,
+    });
+  });
+
+  it.each([
+    [404, "OfferNotFoundError"],
+    [409, "OfferConflictError"],
+    [410, "OfferExpiredError"],
+  ])("turns a %i into %s", async (status, name) => {
+    post.mockRejectedValue(failure(status));
+    await expect(respondToOffer("token", "a1", { response: "accepted" })).rejects.toMatchObject({
+      name,
+    });
+  });
+
+  it("keeps the message the backend gives for a 400", async () => {
+    post.mockRejectedValue(failure(400, { message: "Choose a reason for declining." }));
+    await expect(respondToOffer("token", "a1", { response: "accepted" })).rejects.toMatchObject({
+      name: "OfferInvalidError",
+      message: "Choose a reason for declining.",
+    });
   });
 });

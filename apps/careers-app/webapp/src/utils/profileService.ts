@@ -18,7 +18,6 @@ import axios, { type AxiosResponse } from "axios";
 
 import {
   Application,
-  ApplicationFeedback,
   ApplicationInterview,
   CandidateProfile,
   DocumentRequirements,
@@ -28,7 +27,12 @@ import {
   PersonalDetails,
 } from "@/types/types";
 import { AppConfig } from "@config/config";
-import { OFFER_CONFLICT_ERROR, OFFER_EXPIRED_ERROR } from "@config/constant";
+import {
+  OFFER_CONFLICT_ERROR,
+  OFFER_EXPIRED_ERROR,
+  OFFER_INVALID_ERROR,
+  OFFER_NOT_FOUND_ERROR,
+} from "@config/constant";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -117,6 +121,29 @@ export const forcedSignOutRecently = (): boolean => {
   }
 };
 
+const SIGN_IN_STARTED_KEY = "careers.signInStarted";
+
+// Remembers that a sign-in was started from this app, so that the page the candidate returns to can load both the
+// applications and the profile once. A refresh of a page, with the session still alive, starts no sign-in.
+export const noteSignInStarted = () => {
+  try {
+    sessionStorage.setItem(SIGN_IN_STARTED_KEY, "1");
+  } catch {
+    // Without storage only the open page's data is loaded after a sign-in.
+  }
+};
+
+// Whether a sign-in was started since the last time this was asked. The answer is true once.
+export const consumeSignInStarted = (): boolean => {
+  try {
+    const started = sessionStorage.getItem(SIGN_IN_STARTED_KEY) === "1";
+    sessionStorage.removeItem(SIGN_IN_STARTED_KEY);
+    return started;
+  } catch {
+    return false;
+  }
+};
+
 export const clearForcedSignOut = () => {
   try {
     sessionStorage.removeItem(FORCED_SIGN_OUT_KEY);
@@ -150,40 +177,30 @@ export async function saveProfile(
   );
 }
 
-// Sends the candidate's feedback about one of their applications.
-export async function submitFeedback(
-  accessToken: string,
-  applicationId: string,
-  feedback: ApplicationFeedback,
-): Promise<void> {
-  await sendRenewing(accessToken, (token) =>
-    axios.post(
-      `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/feedback`,
-      feedback,
-      requestOptions(token),
-    ),
-  );
-}
-
 const refused = (name: string, message: string) => Object.assign(new Error(message), { name });
 
-// Records the candidate's answer to an offer and returns the updated application; a 409 or a 410 becomes an error of
-// its own.
-export async function respondToOffer(
-  accessToken: string,
-  applicationId: string,
-  answer: OfferAnswer,
-): Promise<Application> {
+// Records the candidate's answer to an offer. A 400 (with the reason the backend gives), a 404, a 409 and a 410 each
+// become an error of their own.
+export async function respondToOffer(accessToken: string, applicationId: string, answer: OfferAnswer): Promise<void> {
+  const body =
+    answer.response === "accepted"
+      ? { decision: "ACCEPTED" }
+      : { decision: "DECLINED", declineReason: answer.reason, declineReasonAdditional: answer.comment || undefined };
   try {
-    return await sendRenewing(accessToken, (token) =>
-      axios.post<Application>(
-        `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/offer-response`,
-        answer,
+    await sendRenewing(accessToken, (token) =>
+      axios.post(
+        `${AppConfig.serviceUrls.applications}/${encodeURIComponent(applicationId)}/offer/decision`,
+        body,
         requestOptions(token),
       ),
     );
   } catch (error) {
     const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    if (status === 400) {
+      const reason = axios.isAxiosError(error) ? (error.response?.data as { message?: unknown })?.message : undefined;
+      throw refused(OFFER_INVALID_ERROR, typeof reason === "string" && reason ? reason : "The answer was not accepted.");
+    }
+    if (status === 404) throw refused(OFFER_NOT_FOUND_ERROR, "There is no offer to answer.");
     if (status === 409) throw refused(OFFER_CONFLICT_ERROR, "The offer cannot be answered.");
     if (status === 410) throw refused(OFFER_EXPIRED_ERROR, "The offer has expired.");
     throw error;

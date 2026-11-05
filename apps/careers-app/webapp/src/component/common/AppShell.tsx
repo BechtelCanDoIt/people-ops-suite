@@ -15,10 +15,10 @@
 // under the License.
 
 import { Box, Button, Stack, Tooltip, Typography, useColorScheme } from "@wso2/oxygen-ui";
-import { ClipboardList, LogOut, Moon, Sun, User } from "@wso2/oxygen-ui-icons-react";
+import { Briefcase, ClipboardList, LogOut, Moon, Sun, User } from "@wso2/oxygen-ui-icons-react";
 import { Outlet, useLocation, useMatches, useNavigate } from "react-router-dom";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import SnackbarListener from "@component/common/SnackbarListener";
 import { useAppAuthContext } from "@context/AuthContext";
@@ -37,14 +37,17 @@ import {
   profileFailed,
 } from "@slices/careersSlice/careers";
 import { RootState, useAppDispatch, useAppSelector } from "@slices/store";
-import { noteForcedSignOut } from "@utils/profileService";
+import { consumeSignInStarted, noteForcedSignOut } from "@utils/profileService";
 import { dataNeededBy } from "@utils/routeData";
 
 // The height of the logo and the size of the word next to it, in pixels, so the two match.
 const BRAND_SIZE = 22;
 
-// The pages of this app. Jobs are found on the wso2.com careers page, so there is no link for them here.
-const NAV_ITEMS: { label: string; icon: typeof ClipboardList; path: string }[] = [
+// The links of the top bar. A page of this app has a path; the open positions are on the wso2.com careers page, so
+// their link has an address and opens in a new tab.
+type NavItem = { label: string; icon: typeof ClipboardList } & ({ path: string; href?: never } | { href: string; path?: never });
+const NAV_ITEMS: NavItem[] = [
+  { href: CareersSiteUrl, label: "Jobs (opens the WSO2 careers site)", icon: Briefcase },
   { path: "/applications", label: "Applications", icon: ClipboardList },
   { path: "/profile", label: "Profile", icon: User },
 ];
@@ -60,10 +63,20 @@ const AppShell = () => {
   const profileState = useAppSelector((state: RootState) => state.careers.profileState);
   const sessionExpired = useAppSelector((state: RootState) => state.careers.sessionExpired);
 
-  // The data the open route needs.
-  const { applications: needsApplications, profile: needsProfile } = dataNeededBy(useMatches());
+  // Right after a sign-in, both the applications and the profile are loaded, so moving between the two pages does not
+  // wait for the backend. A refresh of a page is not a sign-in, so it loads only what that page needs.
+  const [loadAll, setLoadAll] = useState(false);
+  useEffect(() => {
+    if (!isSignedIn) setLoadAll(false);
+    else if (consumeSignInStarted()) setLoadAll(true);
+  }, [isSignedIn]);
 
-  // Loads the candidate's applications and profile for the open route.
+  // The data the open route needs.
+  const routeNeeds = dataNeededBy(useMatches());
+  const needsApplications = loadAll || routeNeeds.applications;
+  const needsProfile = loadAll || routeNeeds.profile;
+
+  // Loads the data the open page needs, and both sets right after a sign-in.
   useEffect(() => {
     const loadApps = needsApplications && applicationsState === State.idle;
     const loadOwnProfile = needsProfile && profileState === State.idle;
@@ -131,13 +144,18 @@ const AppShell = () => {
           px: { xs: 2, md: 3 },
         }}
       >
-        {/* The logo and the word next to it are one link, to the vacancies on the wso2.com careers page. */}
+        {/* The logo and the word next to it are one link: to the applications for a signed-in candidate, and to the
+            vacancies on the wso2.com careers page, in a new tab, for a guest. */}
         <Box
           component="a"
-          href={CareersSiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="WSO2 Careers: see the open positions"
+          href={isSignedIn ? "/applications" : CareersSiteUrl}
+          {...(isSignedIn ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+          onClick={(event: React.MouseEvent) => {
+            if (!isSignedIn) return;
+            event.preventDefault();
+            navigate("/applications");
+          }}
+          aria-label={isSignedIn ? "WSO2 Careers: go to your applications" : "WSO2 Careers: see the open positions"}
           sx={{ display: "flex", alignItems: "center", gap: "3px", textDecoration: "none", color: "text.primary" }}
         >
           <Box
@@ -162,16 +180,21 @@ const AppShell = () => {
           <Stack component="nav" direction="row" alignItems="center" gap={0.5}>
             {navItems.map((item) => {
               const active = isActive(item.path);
+              // The link to the careers site leaves the app, so it opens in a new tab and is never the current page.
+              const external = item.href !== undefined;
               return (
                 <Tooltip key={item.label} title={item.label} arrow disableInteractive>
                   <Box
-                    component="button"
-                    onClick={() => navigate(item.path)}
+                    component={external ? "a" : "button"}
+                    {...(external
+                      ? { href: item.href, target: "_blank", rel: "noopener noreferrer" }
+                      : { onClick: () => navigate(item.path) })}
                     aria-label={item.label}
                     aria-current={active ? "page" : undefined}
                     sx={{
                       display: "flex",
                       alignItems: "center",
+                      textDecoration: "none",
                       px: 1.25,
                       py: 0.9,
                       border: "none",

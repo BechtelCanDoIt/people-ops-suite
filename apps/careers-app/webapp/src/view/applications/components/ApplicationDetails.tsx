@@ -13,18 +13,28 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
-import { Box, Button, Card, CardContent, Skeleton, Stack, Step, StepLabel, Stepper, Typography } from "@wso2/oxygen-ui";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Skeleton,
+  Stack,
+  Step,
+  StepLabel,
+  Stepper,
+  Typography,
+} from "@wso2/oxygen-ui";
 import { Award, Info } from "@wso2/oxygen-ui-icons-react";
 
 import type { Application, ApplicationInterview, DocumentsStatus } from "@/types/types";
 import ApplicationStatusBadge from "@component/careers/ApplicationStatusBadge";
 import Callout from "@component/common/Callout";
-import { ApplicationStatus, OFFER_RESPONSE_ENABLED } from "@config/constant";
+import { useIsDark } from "@config/brand";
+import { ApplicationStatus, DOCUMENTS_SUBMISSION_ENABLED } from "@config/constant";
 import { cardSx, pillButtonSx } from "@utils/styles";
 import {
   STAGES,
-  daysLeftText,
   formatDate,
   historyOf,
   isOffer,
@@ -60,21 +70,32 @@ const ApplicationDetails = ({
   documentsStatus,
   onRetryDocumentsStatus,
 }: ApplicationDetailsProps) => {
+  const isDark = useIsDark();
   const actionNeeded = isOffer(application);
   // An upcoming interview is shown in orange.
   const interviewComing = upcomingInterviewOf(application, interviews) !== undefined;
-  const deadline = actionNeeded ? offerDeadlineOf(application) : null;
-  const offerExpired = deadline !== null && deadline.daysLeft < 0;
+  const deadline = offerDeadlineOf(application);
   const { activeStep, errorStep } = trackerOf(application);
 
   return (
     <Card elevation={0} sx={cardSx}>
       <Box sx={{ p: 3 }}>
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={1.5}>
+        <Stack
+          direction="row"
+          alignItems="flex-start"
+          justifyContent="space-between"
+          flexWrap="wrap"
+          gap={1.5}
+        >
           <Box sx={{ minWidth: 0 }}>
             <Typography
               component="h1"
-              sx={{ fontSize: { xs: "1.5rem", md: "1.9rem" }, lineHeight: 1.3, fontWeight: 400, color: "text.primary" }}
+              sx={{
+                fontSize: { xs: "1.5rem", md: "1.9rem" },
+                lineHeight: 1.3,
+                fontWeight: 400,
+                color: "text.primary",
+              }}
             >
               {application.jobTitle}
             </Typography>
@@ -89,13 +110,9 @@ const ApplicationDetails = ({
           fontWeight={actionNeeded || interviewComing ? 700 : 500}
           sx={{
             mt: 1.5,
-            // The darker orange on the light theme, which is the one with enough contrast against white.
-            color: (theme) =>
-              actionNeeded || interviewComing
-                ? theme.palette.mode === "dark"
-                  ? theme.palette.primary.main
-                  : theme.palette.primary.dark
-                : theme.palette.text.secondary,
+            // A lighter orange on the dark theme and the darker one on the light theme, each with enough contrast against
+            // its background. The mode comes from useIsDark: a theme callback always answers with the light scheme here.
+            color: actionNeeded || interviewComing ? (isDark ? "#FFA366" : "primary.dark") : "text.secondary",
           }}
         >
           {nextStepOf(application, interviews)}
@@ -109,7 +126,9 @@ const ApplicationDetails = ({
           sx={{
             mb: 3,
             "& .MuiStepIcon-root": { color: "divider" },
-            "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": { color: "primary.main" },
+            "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": {
+              color: "primary.main",
+            },
             "& .MuiStepIcon-root.Mui-error": { color: "#EF4444" },
             "& .MuiStepLabel-label": { fontSize: "0.85rem" },
             "& .MuiStepConnector-root.Mui-active .MuiStepConnector-line, & .MuiStepConnector-root.Mui-completed .MuiStepConnector-line":
@@ -123,27 +142,51 @@ const ApplicationDetails = ({
           ))}
         </Stepper>
 
-        {isOffer(application) && (
+        {application.status === ApplicationStatus.Selected && (
           <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
             <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
-              Congratulations - you have been selected for this position.
+              Congratulations, you have been selected.
             </Typography>
             <Typography fontSize="0.9rem" color="text.primary">
-              We have sent your offer to your email. Please check your inbox, and your spam folder if you can&apos;t
-              find it.
+              Your offer letter will be sent to you soon.
             </Typography>
-            {deadline && (
-              <Typography fontSize="0.9rem" fontWeight={700} color={offerExpired ? "error" : "text.primary"} mt={1}>
-                {offerExpired
-                  ? `This offer expired on ${deadline.date}. Please contact the recruitment team if you still want to join.`
-                  : `Please respond by ${deadline.date} (${daysLeftText(deadline.daysLeft)}).`}
-              </Typography>
-            )}
           </Callout>
         )}
 
-        {OFFER_RESPONSE_ENABLED && isOffer(application) && !offerExpired && (
-          <OfferActions canAccept={canAcceptOffer} onAccept={onAcceptOffer} onDecline={onDeclineOffer} />
+        {actionNeeded && (
+          <>
+            <Callout tone="success" icon={<Award size={20} color="#059669" />} sx={{ mb: 3 }}>
+              <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
+                Congratulations, you have been selected.
+              </Typography>
+              <Typography fontSize="0.9rem" color="text.primary">
+                Check your email for your offer letter, and accept or decline the offer
+                {deadline ? (
+                  <>
+                    {" "}
+                    before <strong>{deadline.date}</strong> (anywhere on Earth)
+                  </>
+                ) : null}
+                .
+              </Typography>
+            </Callout>
+            <OfferActions
+              canAccept={canAcceptOffer}
+              onAccept={onAcceptOffer}
+              onDecline={onDeclineOffer}
+            />
+          </>
+        )}
+
+        {application.status === ApplicationStatus.OfferExpired && (
+          <Callout tone="danger" icon={<Info size={20} color="#DC2626" />} sx={{ mb: 3 }}>
+            <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
+              This offer expired{deadline ? ` on ${deadline.date}` : ""}.
+            </Typography>
+            <Typography fontSize="0.9rem" color="text.primary">
+              Please contact HR if you still want to join.
+            </Typography>
+          </Callout>
         )}
 
         {application.status === ApplicationStatus.OfferAccepted && (
@@ -151,21 +194,35 @@ const ApplicationDetails = ({
             <Typography fontWeight={700} fontSize="0.95rem" color="text.primary">
               You accepted this offer.
             </Typography>
-            {documentsStatus === undefined ? (
-              <Skeleton variant="rounded" width={170} height={40} sx={{ borderRadius: "999px", mt: 1.5 }} />
+            {!DOCUMENTS_SUBMISSION_ENABLED ? (
+              <Typography fontSize="0.9rem" color="text.primary">
+                The hiring team will contact you with the next steps.
+              </Typography>
+            ) : documentsStatus === undefined ? (
+              <Skeleton
+                variant="rounded"
+                width={170}
+                height={40}
+                sx={{ borderRadius: "999px", mt: 1.5 }}
+              />
             ) : documentsStatus === null ? (
               <>
                 <Typography fontSize="0.9rem" color="text.primary" mt={0.5}>
                   We could not check whether your documents were submitted.
                 </Typography>
-                <Button variant="outlined" onClick={onRetryDocumentsStatus} sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  onClick={onRetryDocumentsStatus}
+                  sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}
+                >
                   Try again
                 </Button>
               </>
             ) : documentsStatus.submitted ? (
               <>
                 <Typography fontSize="0.9rem" color="text.primary">
-                  We received your details and documents. The hiring team will contact you with the next steps.
+                  We received your details and documents. The hiring team will contact you with the
+                  next steps.
                 </Typography>
                 {documentsStatus.canEdit ? (
                   <>
@@ -180,7 +237,11 @@ const ApplicationDetails = ({
                         .
                       </Typography>
                     )}
-                    <Button variant="outlined" onClick={onSubmitDocuments} sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={onSubmitDocuments}
+                      sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}
+                    >
                       Edit submission
                     </Button>
                   </>
@@ -195,10 +256,14 @@ const ApplicationDetails = ({
             ) : (
               <>
                 <Typography fontSize="0.9rem" color="text.primary">
-                  Please submit the documents we need for your onboarding. The hiring team will contact you with the
-                  next steps.
+                  Please submit the documents we need for your onboarding. The hiring team will
+                  contact you with the next steps.
                 </Typography>
-                <Button variant="contained" onClick={onSubmitDocuments} sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}>
+                <Button
+                  variant="contained"
+                  onClick={onSubmitDocuments}
+                  sx={{ ...pillButtonSx, px: 3, mt: 1.5 }}
+                >
                   Submit documents
                 </Button>
               </>

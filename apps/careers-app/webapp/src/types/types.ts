@@ -72,21 +72,17 @@ export interface Application {
   // When the application last changed, which is when it reached its current status.
   updatedDate?: string;
   status: ApplicationStatus;
-  // The last day the candidate can answer an offer.
+  // The last day the candidate can answer an offer, anywhere on Earth.
   offerExpiresOn?: string;
-  // True once the candidate has sent feedback about this application.
-  feedbackSubmitted?: boolean;
+  // The subject of the offer email, so the candidate can find it; only present while the offer is open.
+  offerEmailSubject?: string;
   timeline?: ApplicationTimelineEvent[];
   // Only present when the list of applications carries the interviews.
   interviews?: ApplicationInterview[];
 }
 
-// A candidate's answer to an offer; a declined offer carries the reason.
-export interface OfferAnswer {
-  response: "accepted" | "declined";
-  reason?: string;
-  comment?: string;
-}
+// A candidate's answer to an offer; a decline always carries its reason, and may carry more feedback.
+export type OfferAnswer = { response: "accepted" } | { response: "declined"; reason: string; comment?: string };
 
 // The personal details a new joiner fills in after accepting an offer.
 export interface PersonalDetails {
@@ -194,10 +190,4 @@ export interface DocumentRequirements {
   dependantRelationships: string[];
   maxDependants: number;
   maxEmergencyContacts: number;
-}
-
-// What a candidate tells us about their application experience.
-export interface ApplicationFeedback {
-  rating: number | null;
-  comment: string;
 }
