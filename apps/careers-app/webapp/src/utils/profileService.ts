@@ -121,6 +121,29 @@ export const forcedSignOutRecently = (): boolean => {
   }
 };
 
+const SIGN_IN_STARTED_KEY = "careers.signInStarted";
+
+// Remembers that a sign-in was started from this app, so that the page the candidate returns to can load both the
+// applications and the profile once. A refresh of a page, with the session still alive, starts no sign-in.
+export const noteSignInStarted = () => {
+  try {
+    sessionStorage.setItem(SIGN_IN_STARTED_KEY, "1");
+  } catch {
+    // Without storage only the open page's data is loaded after a sign-in.
+  }
+};
+
+// Whether a sign-in was started since the last time this was asked. The answer is true once.
+export const consumeSignInStarted = (): boolean => {
+  try {
+    const started = sessionStorage.getItem(SIGN_IN_STARTED_KEY) === "1";
+    sessionStorage.removeItem(SIGN_IN_STARTED_KEY);
+    return started;
+  } catch {
+    return false;
+  }
+};
+
 export const clearForcedSignOut = () => {
   try {
     sessionStorage.removeItem(FORCED_SIGN_OUT_KEY);

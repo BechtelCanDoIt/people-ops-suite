@@ -23,7 +23,7 @@ import PreLoader from "@component/common/PreLoader";
 import SessionWarningDialog from "@component/common/SessionWarningDialog";
 import { setUserAuthData } from "@slices/authSlice/auth";
 import { useAppDispatch } from "@slices/store";
-import { setTokenRenewer } from "@utils/profileService";
+import { noteSignInStarted, setTokenRenewer } from "@utils/profileService";
 
 type AuthContextType = {
   // Opens the sign-in page; the email, when given, is filled in there.
@@ -83,6 +83,7 @@ const AppAuthProvider = (props: { children: React.ReactNode }) => {
 
   const appSignIn = useCallback(
     (email?: string) => {
+      noteSignInStarted();
       signIn(email ? { login_hint: email } : undefined);
     },
     [signIn],
