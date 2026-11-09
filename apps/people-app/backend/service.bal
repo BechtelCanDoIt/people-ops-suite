@@ -2027,6 +2027,15 @@ service http:InterceptableService / on new http:Listener(9090) {
                             body: {message: "Error occurred while updating reservation."}
                         };
                     }
+                    if !vehicleUpdated {
+                        // Confirmed or expired since it was read as PENDING, so it can no longer be reused.
+                        log:printWarn("Reused reservation is no longer pending", reservationId = activeReservation.id,
+                                invokerEmail = userInfo.email);
+                        return <http:BadRequest>{
+                            body: {message: "Your booking changed while it was being updated. Please check your "
+                                + "bookings and try again."}
+                        };
+                    }
                 }
                 return {
                     reservationId: activeReservation.id,
