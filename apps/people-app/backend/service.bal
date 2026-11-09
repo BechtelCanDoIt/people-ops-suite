@@ -2357,11 +2357,11 @@ service http:InterceptableService / on new http:Listener(9090) {
             };
         }
 
-        // This request performed the transition — append to Google Sheet.
-        error? sheetErr = wso2_coin:appendParkingReservation(confirmedReservation);
+        // This request performed the transition — rewrite the day's reservations in the Google Sheet.
+        error? sheetErr = wso2_coin:syncParkingReservations(confirmedReservation.bookingDate);
         if sheetErr is error {
-            log:printError("Failed to append parking reservation to Google Sheet", sheetErr,
-                    reservationId = confirmedReservation.id);
+            log:printError("Failed to sync parking reservations to Google Sheet", sheetErr,
+                    reservationId = confirmedReservation.id, bookingDate = confirmedReservation.bookingDate);
         }
 
         return confirmedReservation;

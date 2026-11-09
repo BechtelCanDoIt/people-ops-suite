@@ -2510,6 +2510,37 @@ isolated function getParkingReservationByIdQuery(int reservationId) returns sql:
     INNER JOIN vehicle v ON pr.vehicle_id = v.vehicle_id
     WHERE pr.id = ${reservationId}`;
 
+# Get all confirmed parking reservations for a booking date, oldest confirmation first.
+#
+# A confirmed row is never updated again, so `updated_on` is its confirmation time and this order is stable:
+# a list read earlier is always the leading part of a list read later.
+#
+# + bookingDate - Booking date (YYYY-MM-DD)
+# + return - Query to get the confirmed reservations of the date
+isolated function getConfirmedParkingReservationsByDateQuery(string bookingDate) returns sql:ParameterizedQuery =>
+    `SELECT
+        pr.id,
+        pr.slot_id as 'slotId',
+        pr.booking_date as 'bookingDate',
+        pr.employee_email as 'employeeEmail',
+        pr.vehicle_id as 'vehicleId',
+        v.vehicle_registration_number as 'vehicleRegistrationNumber',
+        v.vehicle_type as 'vehicleType',
+        pr.status,
+        pr.transaction_hash as 'paymentReference',
+        pr.coins_amount as 'coinsAmount',
+        pf.name as 'floorName',
+        DATE_FORMAT(pr.created_on, '%Y-%m-%d %H:%i:%s') AS 'createdOn',
+        pr.created_by as 'createdBy',
+        DATE_FORMAT(pr.updated_on, '%Y-%m-%d %H:%i:%s') AS 'updatedOn',
+        pr.updated_by as 'updatedBy'
+    FROM parking_reservation pr
+    INNER JOIN parking_slot ps ON pr.slot_id = ps.slot_id
+    INNER JOIN parking_floor pf ON ps.floor_id = pf.id
+    INNER JOIN vehicle v ON pr.vehicle_id = v.vehicle_id
+    WHERE pr.booking_date = ${bookingDate} AND pr.status = ${CONFIRMED}
+    ORDER BY pr.updated_on, pr.id`;
+
 # Atomically confirm a pending parking reservation (PENDING -> CONFIRMED).
 #
 # + reservationId - Reservation id

@@ -1303,6 +1303,19 @@ public isolated function getParkingReservationById(int reservationId) returns Pa
     return row is sql:NoRowsError ? () : row;
 }
 
+# Get all confirmed parking reservations for a booking date, oldest confirmation first.
+#
+# + bookingDate - Booking date (YYYY-MM-DD)
+# + return - Confirmed reservations of the date, or error
+public isolated function getConfirmedParkingReservationsByDate(string bookingDate)
+        returns ParkingReservationDetails[]|error {
+
+    stream<ParkingReservationDetails, error?> resStream = databaseClient->query(
+        getConfirmedParkingReservationsByDateQuery(bookingDate));
+    return from ParkingReservationDetails r in resStream
+        select r;
+}
+
 # Atomically confirm a pending parking reservation (PENDING -> CONFIRMED).
 #
 # + reservationId - Reservation id

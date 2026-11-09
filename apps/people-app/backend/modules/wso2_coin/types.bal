@@ -26,7 +26,7 @@ public type ParkingSheetConfig record {|
     string clientSecret;
     # Sheet ID.
     string sheetId;
-    # Sheet name (tab) to append reservations to.
+    # Sheet name (tab) to write reservations to.
     string sheetName;
 |};
 
