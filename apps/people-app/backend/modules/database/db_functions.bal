@@ -1263,12 +1263,12 @@ public isolated function expireStalePendingParkingReservationsForEmployeeDate(st
     return result.affectedRowCount > 0;
 }
 
-# Update the vehicle on a parking reservation.
+# Update the vehicle on a pending parking reservation. A confirmed reservation is never changed.
 #
 # + reservationId - Reservation id
 # + vehicleId - Registered vehicle id to set
 # + updatedBy - User performing the update
-# + return - True if updated, or error
+# + return - True if updated, false if the reservation is no longer pending, or error
 public isolated function updateParkingReservationVehicle(int reservationId, int vehicleId, string updatedBy)
         returns boolean|error {
 

@@ -2439,7 +2439,7 @@ isolated function expireStalePendingParkingReservationsForEmployeeDateQuery(stri
       AND status = ${PENDING}
       AND created_on < DATE_SUB(NOW(), INTERVAL ${expiryMinutes} MINUTE)`;
 
-# Update the vehicle on a parking reservation.
+# Update the vehicle on a pending parking reservation. A confirmed reservation is never changed.
 #
 # + reservationId - Reservation id
 # + vehicleId - Registered vehicle id to set
@@ -2449,7 +2449,7 @@ isolated function updateParkingReservationVehicleQuery(int reservationId, int ve
         returns sql:ParameterizedQuery =>
     `UPDATE parking_reservation
     SET vehicle_id = ${vehicleId}, updated_by = ${updatedBy}
-    WHERE id = ${reservationId}`;
+    WHERE id = ${reservationId} AND status = ${PENDING}`;
 
 # Insert parking reservation (PENDING).
 #
