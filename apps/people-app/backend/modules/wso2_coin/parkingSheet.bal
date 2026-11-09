@@ -13,33 +13,58 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/log;
+import ballerina/time;
 import ballerinax/googleapis.sheets as sheets;
 
 import people.database;
 
-# Append a confirmed parking reservation to the Google Sheet.
+# Rewrite all confirmed parking reservations of a booking date into the Google Sheet, read fresh from the database.
 #
-# + reservation - Confirmed parking reservation details
-# + return - () on success, error if failed
-public isolated function appendParkingReservation(database:ParkingReservationDetails reservation) returns error? {
-    // Columns: Booking Date | Employee Email | Vehicle Number | Slot Id | Floor
-    string[] row = [
-        reservation.bookingDate,
-        reservation.employeeEmail,
-        reservation.vehicleRegistrationNumber,
-        reservation.slotId,
-        reservation.floorName
-    ];
-
-    sheets:ValueRange|error result = parkingSpreadsheetClient->appendValue(
-        parkingSheetConfig.sheetId,
-        row,
-        <sheets:A1Range>{sheetName: parkingSheetConfig.sheetName}
-    );
-
-    if result is error {
-        return result;
+# Each call writes the whole day's list, in confirmation order, from the first reservation row down. This replaces
+# appending to the next empty row, which let two concurrent confirmations land on the same row and overwrite one.
+# Concurrent calls, including from other replicas, take no lock: the confirmed list only grows and keeps its order,
+# so a write based on an older read repeats rows that are already correct and leaves newer rows below it untouched.
+# A row missed in a rare commit-order race is restored by the next confirmation of the day. For the same reason,
+# rows below the list are deliberately never cleared.
+#
+# The sheet holds only today's bookings (a script clears it nightly), so a booking for any other date is skipped
+# rather than writing that day's list over today's.
+#
+# + bookingDate - Booking date (YYYY-MM-DD) whose reservations to write
+# + return - () on success or skip, error if reading the reservations or writing the sheet failed
+public isolated function syncParkingReservations(string bookingDate) returns error? {
+    string today = getSriLankaToday();
+    if bookingDate != today {
+        log:printWarn("Skipped parking sheet sync for a booking that is not for today", bookingDate = bookingDate,
+                today = today);
+        return;
     }
-    return ();
+
+    database:ParkingReservationDetails[] reservations =
+        check database:getConfirmedParkingReservationsByDate(bookingDate);
+    if reservations.length() == 0 {
+        return;
+    }
+
+    // Columns: Booking Date | Employee Email | Vehicle Number | Slot Id | Floor
+    string[][] rows = from database:ParkingReservationDetails reservation in reservations
+        select [
+            reservation.bookingDate,
+            reservation.employeeEmail,
+            reservation.vehicleRegistrationNumber,
+            reservation.slotId,
+            reservation.floorName
+        ];
+
+    int lastRow = PARKING_SHEET_FIRST_RESERVATION_ROW + rows.length() - 1;
+    sheets:Range range = {a1Notation: string `A${PARKING_SHEET_FIRST_RESERVATION_ROW}:E${lastRow}`, values: rows};
+    return parkingSpreadsheetClient->setRange(parkingSheetConfig.sheetId, parkingSheetConfig.sheetName, range);
 }
+
+# Get today's date in Sri Lanka time, which has a fixed UTC offset and no daylight saving.
+#
+# + return - Today's date (YYYY-MM-DD) in Sri Lanka time
+isolated function getSriLankaToday() returns string =>
+    time:utcToString(time:utcAddSeconds(time:utcNow(), SRI_LANKA_UTC_OFFSET_SECONDS)).substring(0, 10);
 

@@ -1538,12 +1538,12 @@ public isolated function expireStalePendingParkingReservationsForEmployeeDate(st
     return result.affectedRowCount > 0;
 }
 
-# Update the vehicle on a parking reservation.
+# Update the vehicle on a pending parking reservation. A confirmed reservation is never changed.
 #
 # + reservationId - Reservation id
 # + vehicleId - Registered vehicle id to set
 # + updatedBy - User performing the update
-# + return - True if updated, or error
+# + return - True if updated, false if the reservation is no longer pending, or error
 public isolated function updateParkingReservationVehicle(int reservationId, int vehicleId, string updatedBy)
         returns boolean|error {
 
@@ -1576,6 +1576,19 @@ public isolated function addParkingReservation(AddParkingReservationPayload payl
 public isolated function getParkingReservationById(int reservationId) returns ParkingReservationDetails|error? {
     ParkingReservationDetails|error row = databaseClient->queryRow(getParkingReservationByIdQuery(reservationId));
     return row is sql:NoRowsError ? () : row;
+}
+
+# Get all confirmed parking reservations for a booking date, oldest confirmation first.
+#
+# + bookingDate - Booking date (YYYY-MM-DD)
+# + return - Confirmed reservations of the date, or error
+public isolated function getConfirmedParkingReservationsByDate(string bookingDate)
+        returns ParkingReservationDetails[]|error {
+
+    stream<ParkingReservationDetails, error?> resStream = databaseClient->query(
+        getConfirmedParkingReservationsByDateQuery(bookingDate));
+    return from ParkingReservationDetails r in resStream
+        select r;
 }
 
 # Atomically confirm a pending parking reservation (PENDING -> CONFIRMED).

@@ -20,6 +20,12 @@ const int GSHEET_CONFIG_RETRY_COUNT = 3;
 # Google Sheet retry configuration for wait interval in seconds.
 const decimal GSHEET_CONFIG_RETRY_INTERVAL = 3.0;
 
+# First parking sheet row that holds a reservation; row 1 is the header restored by the daily reset script.
+const int PARKING_SHEET_FIRST_RESERVATION_ROW = 2;
+
+# Sri Lanka's UTC offset (+05:30) in seconds.
+const decimal SRI_LANKA_UTC_OFFSET_SECONDS = 19800;
+
 # Required scheme for the transaction endpoint so forwarded assertions stay encrypted in transit.
 const HTTPS_SCHEME = "https://";
 
